@@ -15,7 +15,12 @@ class Logger(object):
     """Logging in tensorboard without tensorflow ops."""
 
     def __init__(self, log_dir, clear=False):
-        """Creates a summary writer logging to log_dir."""
+        """
+        Creates a summary writer logging to log_dir.
+
+        :param log_dir: directory to keep the log. will create it if the directory doesn't exist
+        :param clear: if the directory is not empty, whether to clear the directory
+        """
         if clear:
             os.system('rm %s -r'%log_dir)
         tl.files.exists_or_mkdir(log_dir)
@@ -23,14 +28,13 @@ class Logger(object):
         self.step = 0
 
     def log_scalar(self, tag, value, step=None):
-        """Log a scalar variable.
-        Parameter
-        ----------
-        tag : basestring
-            Name of the scalar
-        value
-        step : int
-            training iteration
+        """
+        Log a scalar variable.
+
+        :param tag: Name of the scalar
+        :param value: value of the scalar
+        :param int step: training iteration (if not provided, use Logger.step instead)
+            **it's recommended that Logger keep track with the step value**
         """
         if not step:
             step = self.step
@@ -41,8 +45,15 @@ class Logger(object):
         self.writer.flush()
 
     def log_images(self, tag, images, step=None):
-        """Logs a list of images. with 3-D tensor [N, H, W](gray image) or 4-D tensor [N, H, W, C], 
-        C = 1 or C = 3 or C = 4, C = 1 is gray image """
+        """
+        Logs a list of images.
+
+        :param tag:
+        :param images: can be 3-D tensor [N, H, W](gray image) or 4-D tensor [N, H, W, C],
+            C = 1 or C = 3 or C = 4, C = 1 is gray image
+        :param int step: training iteration (if not provided, use Logger.step instead)
+            **it's recommended that Logger keep track with the step value**
+        """
 
         if not step:
             step = self.step
@@ -72,10 +83,17 @@ class Logger(object):
         summary = tf.Summary(value=im_summaries)
         self.writer.add_summary(summary, step)
         self.writer.flush()
-        
 
     def log_histogram(self, tag, values, step=None, bins=1000):
-        """Logs the histogram of a list/vector of values."""
+        """
+        Logs the histogram of a list/vector of values.
+
+        :param tag:
+        :param values:
+        :param int step: training iteration (if not provided, use Logger.step instead)
+            **it's recommended that Logger keep track with the step value**
+        :param bins:
+        """
         if not step:
             step = self.step
         

@@ -8,9 +8,9 @@ Welcome to easydl's documentation!
 
 .. toctree::
    :maxdepth: 4
-   :caption: Contents:
+   :caption: Contents
 
-
+   modules/modules
 
 Indices and tables
 ==================

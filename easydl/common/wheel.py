@@ -5,9 +5,10 @@ from skimage.io import imsave
 import re
 
 def setGPU(i):
-    '''
-    if use multi GPU, i is comma seperated, like '1,2,3'
-    '''
+    """
+    :param i: if use multi GPU, i is comma seperated, like '1,2,3'; for single GPU, i can be an int
+    :return:
+    """
     global os
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = "%s"%(i)
@@ -20,44 +21,49 @@ def setGPU(i):
 def getHomePath():
     return str(pathlib2.Path.home())
 
-def join_path(a, b):
-    return os.path.join(a, b)
+def join_path(*a):
+    return os.path.join(*a)
 
 def ZipOfPython3(*args):
-    '''
+    """
     return a iter rather than a list
-    each of args should be iterable
-    
-    =======usage=======
-    def f(i):
-        while True:
-            yield i
-            i += 1
 
-    for x in ZipOfPython3(f(1), f(2), f(3)):
-        print(x)
-    ===== python2 zip will stuck in this infinite generator function, so we should use ZipOfPython3==========
-    =====another situation is the function returns a datapoint, and zip will make it a list, meaning the whole dataset will be loaded
-        into the memory, which is not desirable=============
-    '''
+    each of args should be iterable
+
+    usage::
+
+        def f(i):
+            while True:
+                yield i
+                i += 1
+
+        for x in ZipOfPython3(f(1), f(2), f(3)):
+            print(x)
+
+    python2 zip will stuck in this infinite generator function, so we should use ZipOfPython3
+
+    another situation is the function returns a datapoint, and zip will make it a list,
+    meaning the whole dataset will be loaded into the memory, which is not desirable
+    """
     args = [iter(x) for x in args]
     while True:
         yield [next(x) for x in args]
 
         
 class AccuracyCounter:
-    '''
+    """
     in supervised learning, we often want to count the test accuracy.
     but the dataset size maybe is not dividable by batch size, causing a remainder fraction which is annoying.
     also, sometimes we want to keep trace with accuracy in each mini-batch(like in train mode)
     this class is a simple class for counting accuracy.
-    
-    ====usage===
-    counter = AccuracyCounter()
-    iterate over test set:
-        counter.addOntBatch(predict, label) -> return accuracy in this mini-batch
-    counter.reportAccuracy() -> return accuracy over whole test set
-    '''
+
+    usage::
+
+        counter = AccuracyCounter()
+        iterate over test set:
+            counter.addOntBatch(predict, label) -> return accuracy in this mini-batch
+        counter.reportAccuracy() -> return accuracy over whole test set
+    """
     def __init__(self):
         self.Ncorrect = 0.0
         self.Ntotal = 0.0
@@ -71,9 +77,9 @@ class AccuracyCounter:
         return Ncorrect / Ntotal
     
     def reportAccuracy(self):
-        '''
-        return nan when 0 / 0
-        '''
+        """
+        :return: **return nan when 0 / 0**
+        """
         return np.asarray(self.Ncorrect, dtype=float) / np.asarray(self.Ntotal, dtype=float)
     
 def sphere_sample(size):
@@ -152,97 +158,3 @@ try:
     from IPython.display import clear_output
 except ImportError as e:
     pass
-
-def inverseDecaySheduler(step, initial_lr, gamma=10, power=0.75, max_iter=1000):
-    '''
-    change as initial_lr * (1 + gamma * min(1.0, iter / max_iter) ) ** (- power) 
-    as known as inv learning rate sheduler in caffe, 
-    see https://github.com/BVLC/caffe/blob/master/src/caffe/proto/caffe.proto
-
-    the default gamma and power come from <Domain-Adversarial Training of Neural Networks>
-    
-    ====code to see how it changes(decays to %20 at %10 * max_iter under default arg)=======
-    from matplotlib import pyplot as plt
-
-    ys = [inverseDecaySheduler(x, 1e-3) for x in range(10000)]
-    xs = [x for x in range(10000)]
-
-    plt.plot(xs, ys)
-    plt.show()
-    
-    '''
-    return initial_lr * ((1 + gamma * min(1.0, step / float(max_iter)) ) ** (- power))
-
-def aToBSheduler(step, A, B, gamma=10, max_iter=10000):
-    '''
-    change gradually from A to B, according to the formula (from <ImportanceWeighted Adversarial Nets for Partial Domain Adaptation>)
-    A + (2.0 / (1 + exp(- gamma * step * 1.0 / max_iter)) - 1.0) * (B - A)
-    
-    ====code to see how it changes(almost reaches B at %40 * max_iter under default arg)=======
-    from matplotlib import pyplot as plt
-
-    ys = [aToBSheduler(x, 1, 3) for x in range(10000)]
-    xs = [x for x in range(10000)]
-
-    plt.plot(xs, ys)
-    plt.show()
-    
-    '''
-    ans = A + (2.0 / (1 + np.exp(- gamma * step * 1.0 / max_iter)) - 1.0) * (B - A)
-    return float(ans)
-
-def runTask():
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--maxGPU', type=int, default=1000)
-    parser.add_argument('--needGPU', type=int, default=1)
-    parser.add_argument('--maxLoad', type=float, default=0.1)
-    parser.add_argument('--maxMemory', type=float, default=0.1)
-    parser.add_argument('--sleeptime', type=float, default=60)
-    parser.add_argument('--user', type=str)
-    parser.add_argument('file', nargs=1)
-    args = parser.parse_args()
-
-    import cPickle
-    from subprocess import Popen, PIPE
-
-    import time
-
-    import GPUtil
-
-    import random
-
-    import os
-    
-    maxGPU = args.maxGPU
-    needGPU = args.needGPU
-    maxLoad = args.maxLoad
-    maxMemory = args.maxMemory
-    file = args.file[0]
-    user = args.user
-    sleeptime = args.sleeptime
-    
-
-    while True:
-        with open(file) as f:
-            lines = [line for line in f if line.strip()]
-        if lines:
-            while True:
-                s = 'for x in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits); do ps -f -p $x | grep "%s"; done'%user
-                p = Popen(s, stdout=PIPE, shell=True)
-                ans = p.stdout.read()
-                mygpu = len(ans.splitlines())
-                deviceIDs = GPUtil.getAvailable(order = 'first', limit = needGPU, maxLoad = maxLoad, maxMemory = maxMemory, includeNan=False, excludeID=[], excludeUUID=[])
-                find = False
-                if mygpu < maxGPU and len(deviceIDs) >= needGPU:
-                    os.system(lines[0].strip())
-                    print('runing command(%s)'%lines[0].strip())
-                    find = True
-                time.sleep(sleeptime)
-                if find:
-                    break
-            with open(file, 'w') as f:
-                for line in lines[1:]:
-                    f.write(line)
-        else:
-            break

@@ -8,14 +8,18 @@ from collections import Iterable
 import math
 
 def weight_init(m):
-    '''
+    """
     initialize weight in neural nets
     use MSRA initializer for conv2d (see <Delving Deep into Rectifiers:Surpassing Human-Level Performance on ImageNet Classification>)
         and use xavier initializer for Linear (see <Understanding the difficulty of training deep feedforward neural networks>)
-    
-    ========usage======
-    net.apply(weight_init)
-    '''
+
+    usage::
+
+        m.apply(weight_init)
+
+    :param m: input module
+    :return:
+    """
     if isinstance(m, nn.Conv2d):
         n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
         m.weight.data.normal_(0, math.sqrt(2. / n))
@@ -40,14 +44,15 @@ class TorchReshapeLayer(nn.Module):
        return x
 
 class TorchLeakySoftmax(nn.Module):
-    '''
+    """
     leaky softmax, x_i = e^(x_i) / (sum_{k=1}^{n} e^(x_k) + coeff) where coeff >= 0
-    
-    ====usage====
-    a = torch.zeros(3, 9)
-    TorchLeakySoftmax().forward(a) # the output probability should be 0.1 over 9 classes
-    
-    '''
+
+    usage::
+
+        a = torch.zeros(3, 9)
+        TorchLeakySoftmax().forward(a) # the output probability should be 0.1 over 9 classes
+
+    """
     def __init__(self, coeff=1.0):
         super(TorchLeakySoftmax, self).__init__()
         self.coeff = coeff
@@ -67,19 +72,19 @@ class TorchRandomProject(nn.Module):
         return x    
 
 class GradientReverseLayer(torch.autograd.Function):
-    '''
-    usage:(can't be used in nn.Sequential, not a subclass of nn.Module)
-    
-    x = Variable(torch.ones(1, 2), requires_grad=True)
-    grl = GradientReverseLayer()
-    grl.coeff = 0.5
-    y = grl(x)
+    """
+    usage:(can't be used in nn.Sequential, not a subclass of nn.Module)::
 
-    y.backward(torch.ones_like(y))
+        x = Variable(torch.ones(1, 2), requires_grad=True)
+        grl = GradientReverseLayer()
+        grl.coeff = 0.5
+        y = grl(x)
 
-    print(x.grad)
-    
-    '''
+        y.backward(torch.ones_like(y))
+
+        print(x.grad)
+
+    """
     def __init__(self):
         self.coeff = 1.0
     def forward(self, input):
@@ -88,23 +93,24 @@ class GradientReverseLayer(torch.autograd.Function):
         return -self.coeff * gradOutput
 
 class GradientReverseModule(nn.Module):
-    '''
+    """
     wrap GradientReverseLayer to be a nn.Module so that it can be used in nn.Sequential
-    
-    ====usage===
-    grl = GradientReverseModule(lambda step : aToBSheduler(step, 0.0, 1.0, gamma=10, max_iter=10000))
 
-    x = Variable(torch.ones(1), requires_grad=True)
-    ans = []
-    for _ in range(10000):
-        x.grad = None
-        y = grl(x)
-        y.backward()
-        ans.append(variable_to_numpy(x.grad))
+    usage::
 
-    plt.plot(list(range(10000)), ans)
-    plt.show() # you can see gradient change from 0 to -1
-    '''
+        grl = GradientReverseModule(lambda step : aToBSheduler(step, 0.0, 1.0, gamma=10, max_iter=10000))
+
+        x = Variable(torch.ones(1), requires_grad=True)
+        ans = []
+        for _ in range(10000):
+            x.grad = None
+            y = grl(x)
+            y.backward()
+            ans.append(variable_to_numpy(x.grad))
+
+        plt.plot(list(range(10000)), ans)
+        plt.show() # you can see gradient change from 0 to -1
+    """
     def __init__(self, scheduler):
         super(GradientReverseModule, self).__init__()
         self.scheduler = scheduler
@@ -117,13 +123,15 @@ class GradientReverseModule(nn.Module):
         return self.grl(x)
 
 class OptimizerManager:
-    '''
+    """
     automatic call op.zero_grad() when enter, call op.step() when exit
-    usage:
-    with OptimizerManager(op): # or with OptimizerManager([op1, op2])
-        b = net.forward(a)
-        b.backward(torch.ones_like(b))
-    '''
+    usage::
+
+        with OptimizerManager(op): # or with OptimizerManager([op1, op2])
+            b = net.forward(a)
+            b.backward(torch.ones_like(b))
+
+    """
     def __init__(self, optims):
         self.optims = optims if isinstance(optims, Iterable) else [optims]
     def __enter__(self):
@@ -140,17 +148,17 @@ class OptimizerManager:
     
     
 class OptimWithSheduler:
-    def __init__(self, optimizer, scheduler_func):
-        '''
-        usage:
+    """
+    usage::
+
         op = optim.SGD(lr=1e-3, params=net.parameters()) # create an optimizer
         scheduler = lambda step, initial_lr : inverseDecaySheduler(step, initial_lr, gamma=100, power=1, max_iter=100) # create a function
         that receives two keyword arguments:step, initial_lr
         opw = OptimWithSheduler(op, scheduler) # create a wrapped optimizer
         with OptimizerManager(opw): # use it as an ordinary optimizer
             loss.backward()
-        '''
-        
+    """
+    def __init__(self, optimizer, scheduler_func):
         self.optimizer = optimizer
         self.scheduler_func = scheduler_func
         self.global_step = 0.0
@@ -165,12 +173,13 @@ class OptimWithSheduler:
         self.global_step += 1
     
 class TrainingModeManager:
-    '''
+    """
     automatic set and reset net.train(mode)
-    usage:
-    with TrainingModeManager(net, train=True): # or with TrainingModeManager([net1, net2], train=True)
-        do whatever
-    '''
+    usage::
+
+        with TrainingModeManager(net, train=True): # or with TrainingModeManager([net1, net2], train=True)
+            do whatever
+    """
     def __init__(self, nets, train=False):
         self.nets = nets if isinstance(nets, Iterable) else [nets]
         self.modes = [net.training for net in nets]
@@ -188,20 +197,22 @@ class TrainingModeManager:
         return True
     
 def variable_to_numpy(x):
-    '''
+    """
     convert a variable to numpy, avoid too many parenthesis
     if the variable only contain one element, then convert it to python float(usually this is the test/train/dev accuracy)
-    '''
+    :param x:
+    :return:
+    """
     ans = x.cpu().data.numpy()
     if torch.numel(x) == 1:
         return float(ans)
     return ans
 
 def merge_ncwh_to_one_image(x):
-    '''
-    x : a variable contains image with NCWH format
-    return a numpy image with shape [1, H, W, C]
-    '''
+    """
+    :param x: a variable contains image with NCWH format
+    :return: a numpy image with shape [1, H, W, C]
+    """
     try:
         # maybe min = max, zero division
         nrow = int(math.ceil(x.size(0) ** 0.5))
@@ -249,17 +260,17 @@ def post_init_module(module):
     return module.cuda()
     
 def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
-    '''
+    """
     binary cross entropy for multi classification
-    
+
     label and predict_prob should be size of [N, C]
-    
+
     class_level_weight should be [1, C] or [N, C] or [C]
-    
+
     instance_level_weight should be [N, 1] or [N]
-    
-    
-    code to play around:
+
+    code to play around::
+
         N = 100
         C = 20
         x = Variable(torch.ones(N, C))
@@ -276,8 +287,14 @@ def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, 
         cw[3] = 1
         out = BCELossForMultiClassification(label=x, predict_prob=prob, class_level_weight=cw)
         print(out)
-    
-    '''
+
+    :param label:
+    :param predict_prob:
+    :param class_level_weight:
+    :param instance_level_weight:
+    :param epsilon:
+    :return:
+    """
     N, C = label.size()
     N_, C_ = predict_prob.size()
     
@@ -301,15 +318,21 @@ def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, 
     return torch.sum(instance_level_weight * bce * class_level_weight) / float(N)
 
 def EntropyLoss(predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
-    '''
+    """
     entropy for multi classification
-    
+
     predict_prob should be size of [N, C]
-    
+
     class_level_weight should be [1, C] or [N, C] or [C]
-    
+
     instance_level_weight should be [N, 1] or [N]
-    '''
+
+    :param predict_prob:
+    :param class_level_weight:
+    :param instance_level_weight:
+    :param epsilon:
+    :return:
+    """
     N, C = predict_prob.size()
     
     if class_level_weight is None:
@@ -330,15 +353,22 @@ def EntropyLoss(predict_prob, class_level_weight=None, instance_level_weight=Non
     return torch.sum(instance_level_weight * entropy * class_level_weight) / float(N)
 
 def CrossEntropyLoss(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
-    '''
+    """
     cross entropy for multi classification
-    
+
     label and predict_prob should be size of [N, C]
-    
+
     class_level_weight should be [1, C] or [N, C] or [C]
-    
+
     instance_level_weight should be [N, 1] or [N]
-    '''
+
+    :param label:
+    :param predict_prob:
+    :param class_level_weight:
+    :param instance_level_weight:
+    :param epsilon:
+    :return:
+    """
     N, C = label.size()
     N_, C_ = predict_prob.size()
     
