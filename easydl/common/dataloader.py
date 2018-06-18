@@ -1,7 +1,5 @@
 import os
 import numpy as np
-import skimage.io as io
-import skimage.transform as T
 import tensorpack
 import time
 import random

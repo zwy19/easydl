@@ -1,7 +1,6 @@
 import pathlib2
 import os
 import numpy as np
-from skimage.io import imsave
 import re
 
 def setGPU(i):
