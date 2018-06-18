@@ -1,0 +1,8 @@
+name: py27
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - pytorch=0.3.1=py27_cuda8.0.61_cudnn7.1.2_3
+  - torchvision=0.1.8=py27_0
+
