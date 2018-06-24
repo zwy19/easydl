@@ -2,12 +2,14 @@ import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import *
 
+EPSILON = 1e-20
+
 def get_initialized_session():
     sess = tf.Session()
     sess.run(tf.global_variables_initializer())
     return sess
 
-def TFBinaryCrossEntropy(predict, label, epsilon=1e-6):
+def TFBinaryCrossEntropy(predict, label, epsilon=EPSILON):
     assert label.shape == predict.shape
     axis = list(range(len(tf.shape(predict))))
     axis = axis[1:]

@@ -7,6 +7,8 @@ import torchvision.utils as vutils
 from collections import Iterable
 import math
 
+EPSILON = 1e-20
+
 def weight_init(m):
     """
     initialize weight in neural nets
@@ -276,7 +278,7 @@ def post_init_module(module):
     module.apply(weight_init)
     return module.cuda()
     
-def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
+def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=EPSILON):
     """
     binary cross entropy for multi classification
 
@@ -334,7 +336,7 @@ def BCELossForMultiClassification(label, predict_prob, class_level_weight=None, 
     bce = -label*torch.log(predict_prob + epsilon) - (1.0 - label) * torch.log(1.0 - predict_prob + epsilon)
     return torch.sum(instance_level_weight * bce * class_level_weight) / float(N)
 
-def EntropyLoss(predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
+def EntropyLoss(predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=EPSILON):
     """
     entropy for multi classification
 
@@ -369,7 +371,7 @@ def EntropyLoss(predict_prob, class_level_weight=None, instance_level_weight=Non
     entropy = -predict_prob*torch.log(predict_prob + epsilon)
     return torch.sum(instance_level_weight * entropy * class_level_weight) / float(N)
 
-def CrossEntropyLoss(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=1e-6):
+def CrossEntropyLoss(label, predict_prob, class_level_weight=None, instance_level_weight=None, epsilon=EPSILON):
     """
     cross entropy for multi classification
 
