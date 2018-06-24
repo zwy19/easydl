@@ -36,6 +36,7 @@ def weight_init(m):
         except Exception as e:
             pass
 
+
 class TorchReshapeLayer(nn.Module):
     """
     make reshape operation a module that can be used in ``nn.Sequential``
@@ -47,6 +48,15 @@ class TorchReshapeLayer(nn.Module):
     def forward(self, x):
        x = x.view(x.size(0), *self.shape_without_batchsize)
        return x
+
+
+class TorchIdentityLayer(nn.Module):
+    def __init__(self):
+        super(TorchIdentityLayer, self).__init__()
+
+    def forward(self, x):
+       return x
+
 
 class TorchLeakySoftmax(nn.Module):
     """
@@ -66,7 +76,8 @@ class TorchLeakySoftmax(nn.Module):
         x = torch.exp(x)
         x = x / (torch.sum(x, dim=-1, keepdim=True) + self.coeff)
         return x, torch.sum(x, dim=-1, keepdim=True)
-    
+
+
 class TorchRandomProject(nn.Module):
     def __init__(self, input_dim, out_dim):
         super(TorchRandomProject, self).__init__()
@@ -75,6 +86,7 @@ class TorchRandomProject(nn.Module):
         x = x.resize(x.size(0), 1, x.size(1))
         x = torch.sum(self.matrix * x, dim=-1)
         return x    
+
 
 class GradientReverseLayer(torch.autograd.Function):
     """
