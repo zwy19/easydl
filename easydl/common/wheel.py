@@ -35,11 +35,14 @@ def selectGPUs(n, max_load=0.1, max_memory=0.1):
         setGPU(gpus)
         return True, gpus
 
+
 def getHomePath():
     return str(pathlib2.Path.home())
 
+
 def join_path(*a):
     return os.path.join(*a)
+
 
 def ZipOfPython3(*args):
     """
@@ -66,7 +69,7 @@ def ZipOfPython3(*args):
     while True:
         yield [next(x) for x in args]
 
-        
+
 class AccuracyCounter:
     """
     in supervised learning, we often want to count the test accuracy.
@@ -98,7 +101,47 @@ class AccuracyCounter:
         :return: **return nan when 0 / 0**
         """
         return np.asarray(self.Ncorrect, dtype=float) / np.asarray(self.Ntotal, dtype=float)
-    
+
+
+class Accumulator(dict):
+    """
+    accumulate data and store them in a dict
+
+    usage::
+
+        with Accumulator(['weight', 'coeff']) as accumulator:
+            for data in data_generator():
+                # forward ......
+                weight = xxx
+                coeff = xxx
+
+                accumulator.updateData(scope=globals())
+
+        # do whatever with accumulator['weight'] and accumulator['coeff']
+
+    """
+    def __init__(self, names, accumulate_fn=np.concatenate):
+        super(Accumulator, self).__init__()
+        self.names = names
+        self.accumulate_fn = accumulate_fn
+        for name in self.names:
+            self.__setitem__(name, [])
+
+    def updateData(self, scope):
+        for name in self.names:
+            self.__getitem__(name).append(scope[name])
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for name in self.names:
+            self.__setitem__(name, self.accumulate_fn(self.__getitem__(name)))
+        if exc_tb:
+            print(exc_tb)
+            return False
+        return True
+
 def sphere_sample(size):
     '''
     sample noise from high dimensional gaussian distribution and project it to high dimension sphere of unit ball(with L2 norm = 1)
