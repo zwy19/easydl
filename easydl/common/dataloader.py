@@ -3,6 +3,7 @@ import numpy as np
 import tensorpack
 import time
 import random
+import numbers
 from scipy.misc import imread, imresize
 import tensorlayer as tl
 import cPickle
@@ -10,7 +11,7 @@ from wheel import *
 
 import warnings
 # disable warning of imread
-warnings.filterwarnings('ignore', message='.*', category=DeprecationWarning)
+warnings.filterwarnings('ignore', message='.*', category=Warning)
 
 
 class CustomDataLoader(object):
@@ -82,9 +83,90 @@ class CustomDataLoader(object):
             then this function returns a generator, which yields N elements in total (actually, it depends on ``ds0.size()``)
         """
         return self.ds2.get_data()
-    
 
-class TestDataset(tensorpack.dataflow.RNGDataFlow):
+
+class BaseDataset(tensorpack.dataflow.RNGDataFlow):
+    """
+    base class for dataset
+
+    what the subclass should do:
+
+    #. remember arguments in ``__init__``, call ``super.__init__``
+
+    #. implement ``_fill_data`` : fill content for ``self.datas`` and ``self.labels``
+
+    #. implement ``_get_one_data``
+
+    the pipeline looks like this:
+
+    #. in ``__init__``, ``_fill_data`` is called to load datas and labels (at this point, data may be a file path)
+
+    #. ``skip_pred`` is used to filter out some data
+
+    #. read a data (usually read from a file path to get the image) by calling ``_get_one_data``,
+        pass it to ``transform``, and return the results
+    """
+    def __init__(self, is_train=True, skip_pred=None, transform=None):
+        """
+        :param bool is_train: train mode or test mode
+        :param skip_pred: predicate with signature of ``(data, label, is_train) -> bool`` . each data will be passed into
+            this predicate , data that makes this predicate returns True will be omitted (**can be used to filter
+            out some data**). the predicate needs the argument ``is_train`` in case that one may want to use
+            different filtering strategy in test and train mode.
+        :param transform: predicate with signature of ``(data, label, is_train) -> (data,label)`` . can be used to perform
+            some preprocessing task like image resize or so. the predicate needs the argument ``is_train``
+            in case that one may want to use different transform strategy in test and train mode (for example, random
+            cropping in training and deterministic cropping in test). the predicate needs the argument ``label``
+            so that users can have complete control (maybe some transform needs the label information?)
+        """
+        self.is_train = is_train
+        self.skip_pred = skip_pred or (lambda data, label, is_train : False)
+        self.transform = transform or (lambda data, label, is_train : (data, label))
+
+        self.datas = []
+        self.labels = []
+
+        self._fill_data()
+
+        self._post_init()
+
+    def _fill_data(self):
+        """
+        should be implemented by subclass. fill content for ``self.datas`` and ``self.labels``
+        """
+        raise NotImplementedError("not implemented!")
+
+    def _post_init(self):
+        """
+        filter out some data that makes skip_pred return True
+        """
+        tmp = [[data, label]  for (data, label) in zip(self.datas, self.labels) if not self.skip_pred(data, label, self.is_train) ]
+        self.datas = [x[0] for x in tmp]
+        self.labels = [x[1] for x in tmp]
+
+    def size(self):
+        return len(self.datas)
+
+    def _get_one_data(self, data, label):
+        """
+        should be implemented by subclass
+        """
+        raise NotImplementedError("not implemented!")
+
+    def get_data(self):
+        """
+        returned data and label should be at least rank 1, but can't be rank 0 (just a number)
+        """
+        size = self.size()
+        ids = list(range(size))
+        for _ in range(size):
+            id = random.choice(ids) if self.is_train else _
+            data, label = self._get_one_data(self.datas[id], self.labels[id])
+            data, label = self.transform(data, label, self.is_train)
+            yield np.asarray(data), np.asarray([label]) if isinstance(label, numbers.Number) else label
+
+
+class TestDataset(BaseDataset):
     """
     simple test dataset to store N data, ith data is ``([i, i+1], [2i+1])`` where 0 <= i < N
 
@@ -95,187 +177,143 @@ class TestDataset(tensorpack.dataflow.RNGDataFlow):
         for (x, y) in TestDataset(is_train=False).get_data():
             print((x, y))
     """
-    def __init__(self,is_train=True, N=100):
-        """
-        :param bool is_train: if is_train, return data randomly. else, return data in test mode(i.e., generate samples in specific order)
-        :param int N: number of data points
-        """
-        self.is_train = is_train
+    def __init__(self, N=100,  is_train=True, skip_pred=None, transform=None):
         self.N = N
-        
-    def size(self):
-        return self.N
-    
-    def get_data(self):
-        """
-        :return: yield a tuple, each element in the tuple should be np array
-        """
-        number = self.N
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            x = np.asarray([id, id+1])
-            y = np.asarray([2 * id + 1])
-            yield x, y
+        super(TestDataset, self).__init__(is_train=is_train, skip_pred=skip_pred, transform=transform)
 
-class FileListDataset(tensorpack.dataflow.RNGDataFlow):
-    def __init__(self, list_path, path_prefix='',is_train=True,imsize=224, n_class=None, label_transform=None, skip_pred=None, image_transform=None):
+    def _fill_data(self):
+        self.datas = [[i, i + 1] for i in range(self.N)]
+        self.labels = [2 * i + 1 for i in range(self.N)]
+
+    def _get_one_data(self, data, label):
+        return data, label
+
+
+class CombinedDataset(BaseDataset):
+    """
+    combine multiple datasets to get a new dataset.
+
+    this can be useful if one wants to combine different datasets with various size in training (the ``weights``
+    argument can be used to achieve balance between datasets)
+
+    this class concatenates all data in ``datasets``, and generates data points randomly from one dataset
+    according to the given weight
+    """
+    def __init__(self, datasets, weights):
+        """
+        :param list datasets: list of datasets to be combined
+        :param list weights:  list of weight for each datasets
+        """
+        self.datasets = datasets
+        self.weights = weights
+        super(CombinedDataset, self).__init__(is_train=True, skip_pred=None, transform=None)
+
+    def _fill_data(self):
+        self.datas = sum([x.datas for x in self.datasets], [])
+        self.labels = sum([x.labels for x in self.datasets], [])
+
+        # make weights a probability distribution
+        self.weights = np.asarray(self.weights, dtype=np.float32)
+        self.weights = self.weights / np.sum(self.weights)
+
+        self.iters = [x.get_data() for x in self.datasets]
+        self.indexes = np.asarray(list(range(len(self.datasets))), dtype=np.int)
+
+    def _get_one_data(self, data, label):
+        index = np.random.choice(self.indexes, p=self.weights)
+        try:
+            return next(self.iters[index])
+        except StopIteration as e:
+            self.iters[index] = self.datasets[index].get_data()
+            return next(self.iters[index])
+
+
+class BaseImageDataset(BaseDataset):
+    """
+    base image dataset
+
+    for image dataset, ``_get_one_data`` usually reads image from file path
+
+    by default, if the data is colored image, then it's in ``uint8`` type; if it's gray image, then it's in
+    ``float`` type.
+
+    by default, the returned label is int. to make the label one-hot, one should do it in ``transform``
+    """
+    def __init__(self, imsize=224, is_train=True, skip_pred=None, transform=None):
+        self.imsize = imsize
+        super(BaseImageDataset, self).__init__(is_train, skip_pred, transform)
+
+    def _get_one_data(self, data, label):
+        im = imread(data, mode='RGB')
+        im = imresize(im, (self.imsize, self.imsize))
+        return im, label
+
+
+def one_hot(n_class, index):
+    """
+    make an one-hot label
+    """
+    tmp = np.zeros((n_class,), dtype=np.float32)
+    tmp[index] = 1.0
+    return tmp
+
+
+class FileListDataset(BaseImageDataset):
+    """
+    dataset that consists of a file which has the structure of :
+
+    image_path label_id
+    image_path label_id
+    ......
+
+    i.e., each line contains an image path and a label id
+    """
+    def __init__(self, list_path, path_prefix='', imsize=224, is_train=True, skip_pred=None, transform=None):
         """
         :param str list_path: absolute path of image list file (which contains (path, label_id) in each line) **avoid space in path!**
         :param str path_prefix: prefix to add to each line in image list to get the absolute path of image,
             esp, you should set path_prefix if file path in image list file is relative path
-        :param bool is_train:
-        :param int imsize: the size of image to be returned(original image will be loaded and resized to this size)
-        :param int n_class: total number of classes. this arg determines the dimension of the returned label
-        :param callable label_transform: transform the label in image list file to a specific label. useful if the image comes from
-            a larger dataset where it has 1000 label, and you only want to use 100 of them which is [200, 300),
-            then you can set n_class=100 and label_transform=lambda x : x - 200
-        :param callable skip_pred: unary predicate, skip the data when the skip_pred returns true. used to filter dataset
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
         """
         self.list_path = list_path
         self.path_prefix = path_prefix
-        self.is_train = is_train
-        self.imsize=imsize
-        self.label_transform = label_transform
-        self.skip_pred = skip_pred or (lambda x : False)
-        self.image_transform = image_transform or (lambda x: x)
-        
+
+        super(FileListDataset, self).__init__(imsize=imsize, is_train=is_train, skip_pred=skip_pred, transform=transform)
+
+    def _fill_data(self):
         with open(self.list_path, 'r') as f:
             data = [[line.split()[0], line.split()[1]] for line in f.readlines() if line.strip()] # avoid empty lines
-            self.files = [join_path(self.path_prefix, x[0]) for x in data]
+            self.datas = [join_path(self.path_prefix, x[0]) for x in data]
             try:
                 self.labels = [int(x[1]) for x in data]
             except ValueError as e:
                 print('invalid label number, maybe there is space in image path?')
                 raise e
-            
-            tmp = [[file, label] for file, label in zip(self.files, self.labels) if not self.skip_pred(label)]
-            self.files = [x[0] for x in tmp]
-            self.labels = [x[1] for x in tmp]
-                
-        self.n_class = n_class if n_class else max(self.labels) + 1 # if n_class is not set, try to infer from labels in file list
-        
-    def size(self):
-        return len(self.files)
-    
-    def get_data(self):
-        number = len(self.files)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            file = self.files[id]
-            label = self.labels[id]
-            if self.label_transform:
-                label = self.label_transform(label)
 
-            # create one-hot label
-            tmp = np.zeros((self.n_class,), dtype=np.float32)
-            tmp[label] = 1.0
-            im = imread(file, mode='RGB')
-            # resize to 256 and crop 224, then remize to required size
-            im = imresize(im, size=(256, 256))
-            im = tl.prepro.crop(im, 224, 224, is_random=self.is_train)
-            im = imresize(im, (self.imsize, self.imsize))
-            im = self.image_transform(im)
-            yield im,tmp
-    
-    
-class MultiFileListDataset(tensorpack.dataflow.RNGDataFlow):
-    def __init__(self, list_paths, path_prefixes='',list_repeats = None, is_train=True,imsize=224, n_class=None, label_transforms=None, image_transform=None):
-        """
-        :param list_paths: (list of str) absolute path of image list files (which contains (path, label_id) in each line) **avoid space in path!**
-        :param path_prefixes: (str or list of str) prefix to add to each line in image list to get the absolute path of image,
-            esp, you should set path_prefix if file path in image list file is relative path
-        :param list_repeats: (list of number) numbers each file list will repeat (i.e., the probability density of sampling)
-        :param bool is_train:
-        :param int imsize: the size of image to be returned(original image will be loaded and resized to this size)
-        :param int n_class: total number of classes. this arg determines the dimension of the returned label
-        :param label_transforms: list of callable, transform the label in image list file to a specific label.
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
-        """
-        self.list_paths = list_paths
-        self.path_prefixes = [path_prefixes for path in self.list_paths] if isinstance(path_prefixes, str) else path_prefixes
-        self.list_repeats = list_repeats or [1 for path in self.list_paths]
-        assert len(self.list_repeats) == len(self.path_prefixes)
-        self.is_train = is_train
-        self.imsize=imsize
-        self.label_transforms = label_transforms or [(lambda x : x) for path in self.list_paths]
-        self.image_transform = image_transform or (lambda x: x)
-        
-        self.files = []
-        self.labels = []
-        self.weights = []
-        for list_path, path_prefix, list_repeat, label_transform in zip(self.list_paths, self.path_prefixes, self.list_repeats, self.label_transforms):
-            with open(list_path, 'r') as f:
-                data = [[line.split()[0], line.split()[1]] for line in f.readlines() if line.strip()] # avoid empty lines
-                self.files += [join_path(path_prefix, x[0]) for x in data]
-                self.weights += [list_repeat for x in data]
-                try:
-                    self.labels += [label_transform(int(x[1])) for x in data] 
-                except ValueError as e:
-                    print('invalid label number, maybe there is space in image path?')
-                    raise e
-        self.weights = np.asarray(self.weights, dtype=np.float)
-        self.weights = self.weights / np.sum(self.weights) # make it a distribution
-                
-        self.n_class = n_class if n_class else max(self.labels) + 1 # if n_class is not set, try to infer from labels in file list
-        
-    def size(self):
-        return len(self.files)
-    
-    def get_data(self):
-        number = len(self.files)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = np.random.choice(numbers, p=self.weights) if self.is_train else _
-            file = self.files[id]
-            label = self.labels[id]
-            # create one-hot label
-            tmp = np.zeros((self.n_class,), dtype=np.float32)
-            tmp[label] = 1.0
-            im = imread(file, mode='RGB')
-            # resize to 256 and crop 224, then remize to required size
-            im = imresize(im, size=(256, 256))
-            im = tl.prepro.crop(im, 224, 224, is_random=self.is_train)
-            im = imresize(im, (self.imsize, self.imsize))
-            im = self.image_transform(im)
-            yield im,tmp
 
-class UnLabeledImageDataset(tensorpack.dataflow.RNGDataFlow):
+class UnLabeledImageDataset(BaseImageDataset):
     """
     applies to image dataset in one directory without labels for unsupervised learning, like getchu, celeba etc
 
     there is no test mode in unsupervised learning
+
+    **although this is UnLabeledImageDataset, it returns useless labels to have similar interface with other datasets**
     """
-    def __init__(self, root_dir,imsize=128, image_transform=None):
+
+    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None):
         """
-        :param root_dir:
-        :param imsize:
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
+
+        :param root_dir:  search ``root_dir`` recursively for all files (treat all files as image files)
         """
         self.root_dir = root_dir
-        self.imsize = imsize
-        self.image_transform = image_transform or (lambda x: x)
+        super(UnLabeledImageDataset, self).__init__(imsize, is_train, skip_pred, transform)
 
-        self.files = sum([[os.path.join(path, file) for file in files] for path, dirs, files in os.walk(self.root_dir) if files], [])
+    def _fill_data(self):
+        self.datas = sum(
+            [[os.path.join(path, file) for file in files] for path, dirs, files in os.walk(self.root_dir) if files], [])
+        self.labels = [0 for x in self.datas] # useless label
 
-    def size(self):
-        return len(self.files)
-    
-    def get_data(self):
-        # shuffle and yield data
-        random.shuffle(self.files)
-        for file in self.files:
-            im = imread(file, mode='RGB')
-            im = imresize(im, (self.imsize, self.imsize))
-            im = self.image_transform(im)
-            yield (im,)
 
-class ImageFolderDataset(tensorpack.dataflow.RNGDataFlow):
+class ImageFolderDataset(BaseImageDataset):
     """
     dataset for specific directory hierachy::
 
@@ -290,203 +328,104 @@ class ImageFolderDataset(tensorpack.dataflow.RNGDataFlow):
                 ...
             ...
 
-    """
-    def __init__(self, root_dir,is_train=True,imsize=224, image_transform=None):
-        """
+    class names are collected and sorted alphabetically , then converted to integers.
 
-        :param root_dir:
-        :param is_train:
-        :param imsize:
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
-        """
+    to convert between class names and integers, use ``NameToId`` and ``IdToName`` properties
+    """
+    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None):
         self.root_dir = root_dir
-        self.files = sum([[os.path.join(path, file) for file in files] for path, dirs, files in os.walk(self.root_dir) if files], [])
-        self.labels = [file.split(os.sep)[-2] for file in self.files]
+        super(ImageFolderDataset, self).__init__(imsize, is_train, skip_pred, transform)
+
+    def _fill_data(self):
+        self.datas = sum([[os.path.join(path, file) for file in files] for path, dirs, files in os.walk(self.root_dir) if files], [])
+        self.labels = [file.split(os.sep)[-2] for file in self.datas]
         self.classes = sorted(list(set(self.labels)))
         self.NameToId = {x : i for (i, x) in enumerate(self.classes)}
         self.IdToName = {i : x for (i, x) in enumerate(self.classes)}
 
-        self.image_transform = image_transform or (lambda x: x)
+        self.labels = [self.NameToId[x] for x in self.labels]
 
-        self.is_train = is_train
-        self.imsize=imsize
-        
-    def size(self):
-        return len(self.files)
-    
-    def get_data(self):
-        number = len(self.files)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            file = self.files[id]
-            label = self.NameToId[self.labels[id]]
-            tmp = np.zeros((len(self.classes),), dtype=np.float32)
-            tmp[label] = 1.0
-            im = imread(file, mode='RGB')
-            im = imresize(im, size=(256, 256))
-            im = tl.prepro.crop(im, 224, 224, is_random=self.is_train)
-            im = imresize(im, (self.imsize, self.imsize))
-            im = self.image_transform(im)
-            yield im,tmp
-            
+
 from tensorflow.examples.tutorials.mnist import input_data
 
-class MNISTDataset(tensorpack.dataflow.RNGDataFlow):
-    def __init__(self, root_dir, is_train=True, image_transform=None):
+
+class MNISTDataset(BaseDataset):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
         """
-
-        :param root_dir:
-        :param is_train:
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
-        """
-        self.mnist = input_data.read_data_sets(train_dir=root_dir, one_hot=True)
-        self.is_train = is_train
-        self.current_ds = self.mnist.train if self.is_train else self.mnist.test
-
-        self.image_transform = image_transform or (lambda x: x)
-
-    def size(self):
-        return len(self.current_ds.images)
-
-    def get_data(self):
-        number = len(self.current_ds.images)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            im = self.current_ds.images[id].reshape((28, 28, 1))
-            im = im * 255
-            im = self.image_transform(im)
-            label = self.current_ds.labels[id]
-            yield  im, label
-
-    
-class CifarDataset(tensorpack.dataflow.RNGDataFlow):
-    def __init__(self, root_dir, is_train=True, image_transform=None):
-        """
-
-        :param root_dir:
-        :param is_train:
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
-        """
-        self.x_train, self.y_train, self.x_test, self.y_test = tl.files.load_cifar10_dataset(shape=(-1, 32, 32, 3), path=root_dir)
-        CLASS = 10
-        y = np.zeros(shape=(len(self.y_train), CLASS),dtype=np.float32)
-        for (i, each) in enumerate(y):
-            each[self.y_train[i]] = 1.0
-        self.y_train = y
-        
-        y = np.zeros(shape=(len(self.y_test), CLASS),dtype=np.float32)
-        for (i, each) in enumerate(y):
-            each[self.y_test[i]] = 1.0
-        self.y_test = y
-        
-        self.is_train = is_train
-        self.current_x = self.x_train if self.is_train else self.x_test
-        self.current_y = self.y_train if self.is_train else self.y_test
-
-        self.image_transform = image_transform or (lambda x: x)
-
-    def size(self):
-        return len(self.current_x)
-
-    def get_data(self):
-        number = len(self.current_x)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            im = self.current_x[id]
-            im = self.image_transform(im)
-            yield im, self.current_y[id]
-    
-class Cifar100Dataset(tensorpack.dataflow.RNGDataFlow):
-    def __init__(self, root_dir, is_train=True, image_transform=None):
-        """
-        :param root_dir: where cifar-100-python directory lies
-        :param is_train:
-        :param callable image_transform: image preprocess function, it should accept an image and return a processed image.
-            The input image is promised to be at range [0, 256)
+        :param root_dir: directory that contains **train-images-idx3-ubyte.gz** etc.
         """
         self.root_dir = root_dir
-        self.cifar100 = cPickle.load(open(os.path.join(root_dir, 'cifar-100-python/train'), 'rb'))
+        super(MNISTDataset, self).__init__(is_train, skip_pred, transform)
+
+    def _fill_data(self):
+        self.mnist = input_data.read_data_sets(train_dir=self.root_dir, one_hot=False)
+        self.current_ds = self.mnist.train if self.is_train else self.mnist.test
+        self.datas = self.current_ds.images
+        self.labels = self.current_ds.labels
+
+    def _get_one_data(self, data, label):
+        return data.reshape((28, 28, 1)), label
+
+    
+class Cifar10Dataset(BaseDataset):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
+        """
+        :param root_dir: directory that contains **cifar10 directory with cifar-10-python.tar.gz in it**
+
+        the hierarchy looks like this::
+
+        root_dir
+        |__cifar10
+            |_cifar-10-python.tar.gz
+
+        """
+        self.root_dir = root_dir
+        super(Cifar10Dataset, self).__init__(is_train, skip_pred, transform)
+
+    def _fill_data(self):
+        self.x_train, self.y_train, self.x_test, self.y_test = tl.files.load_cifar10_dataset(shape=(-1, 32, 32, 3),
+                                                                                             path=self.root_dir)
+
+        self.current_x = self.x_train if self.is_train else self.x_test
+        self.current_y = self.y_train if self.is_train else self.y_test
+        self.datas = self.current_x
+        self.labels = self.current_y
+
+    def _get_one_data(self, data, label):
+        return data, label
+
+
+class Cifar100Dataset(BaseDataset):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
+        """
+        :param root_dir: directory that contains cifar-100 data
+
+        the hierarchy looks like this::
+
+        root_dir
+        |__cifar-100-python
+            |_test
+            |_train
+
+        """
+        self.root_dir = root_dir
+        super(Cifar100Dataset, self).__init__(is_train, skip_pred, transform)
+
+    def _fill_data(self):
+        self.cifar100 = cPickle.load(open(os.path.join(self.root_dir, 'cifar-100-python/train'), 'rb'))
         self.x_train = self.cifar100['data']
         self.x_train.resize((self.x_train.shape[0], 32, 32, 3))
         self.y_train = self.cifar100['fine_labels']
-        
-        self.cifar100_test = cPickle.load(open(os.path.join(root_dir, 'cifar-100-python/test'), 'rb'))
+
+        self.cifar100_test = cPickle.load(open(os.path.join(self.root_dir, 'cifar-100-python/test'), 'rb'))
         self.x_test = self.cifar100_test['data']
         self.x_test.resize((self.x_test.shape[0], 32, 32, 3))
         self.y_test = self.cifar100_test['fine_labels']
-        
-        CLASS = 100
-        y = np.zeros(shape=(len(self.y_train), CLASS),dtype=np.float32)
-        for (i, each) in enumerate(y):
-            each[self.y_train[i]] = 1.0
-        self.y_train = y
-        
-        y = np.zeros(shape=(len(self.y_test), CLASS),dtype=np.float32)
-        for (i, each) in enumerate(y):
-            each[self.y_test[i]] = 1.0
-        self.y_test = y
-        
-        self.x_train = self.x_train.astype(np.float32)
-        self.x_test = self.x_test.astype(np.float32)
-        
-        self.is_train = is_train
+
         self.current_x = self.x_train if self.is_train else self.x_test
         self.current_y = self.y_train if self.is_train else self.y_test
+        self.datas = self.current_x
+        self.labels = self.current_y
 
-        self.image_transform = image_transform or (lambda x: x)
-
-    def size(self):
-        return len(self.current_x)
-
-    def get_data(self):
-        number = len(self.current_x)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            im = self.current_x[id]
-            im = self.image_transform(im)
-            yield im, self.current_y[id]
-
-import pytreebank
-class TreeBankDataset(tensorpack.dataflow.RNGDataFlow):
-    TRAIN = 1
-    TEST = 2
-    DEV = 3
-    idToName = {TRAIN:'train', TEST:'test', DEV:'dev'}
-    def __init__(self, 
-                 root_dir,
-                 max_len = 60,
-                 mode=TRAIN):
-        name = TreeBankDataset.idToName[mode]
-        self.is_train = (mode == TreeBankDataset.TRAIN)
-        self.data = pytreebank.import_tree_corpus(os.path.join(root_dir, '%s.txt'%name))
-        self.data = [x.to_labeled_lines()[0] for x in self.data]
-        self.max_len = max_len
-        self.vocab = tl.nlp.Vocabulary(os.path.join(root_dir, '%s.txt'%'vocab'))
-        
-    def size(self):
-        return len(self.data)
-
-    def get_data(self):
-        number = len(self.data)
-        numbers = list(range(number))
-        for _ in range(number):
-            id = random.choice(numbers) if self.is_train else _
-            label, sentence = self.data[id]
-            sentence = tl.nlp.process_sentence(sentence, None, None)
-            sentence = [self.vocab.word_to_id(word) for word in sentence]
-            if len(sentence) > self.max_len:
-                sentence = sentence[:self.max_len]
-            else:
-                sentence += [self.vocab.pad_id for _ in range(self.max_len - len(sentence))]
-                
-            weight = np.array([abs(i - label) + 1.0 for i in range(5)], dtype=np.float32)
-            label = np.array([int(i == label) for i in range(5)], dtype=np.float32)
-            sentence = np.asarray(sentence, dtype=np.int)
-            yield sentence, label, weight
+    def _get_one_data(self, data, label):
+        return data, label

@@ -35,6 +35,9 @@ def weight_init(m):
             pass
 
 class TorchReshapeLayer(nn.Module):
+    """
+    make reshape operation a module that can be used in ``nn.Sequential``
+    """
     def __init__(self, shape_without_batchsize):
         super(TorchReshapeLayer, self).__init__()
         self.shape_without_batchsize = shape_without_batchsize
@@ -92,9 +95,10 @@ class GradientReverseLayer(torch.autograd.Function):
     def backward(self, gradOutput):
         return -self.coeff * gradOutput
 
+
 class GradientReverseModule(nn.Module):
     """
-    wrap GradientReverseLayer to be a nn.Module so that it can be used in nn.Sequential
+    wrap GradientReverseLayer to be a nn.Module so that it can be used in ``nn.Sequential``
 
     usage::
 
@@ -121,6 +125,7 @@ class GradientReverseModule(nn.Module):
         self.global_step += 1.0
         self.grl.coeff = coeff
         return self.grl(x)
+
 
 class OptimizerManager:
     """
@@ -230,6 +235,12 @@ def addkey(diction, key, global_vars):
     diction[key] = global_vars[key]
     
 def track_scalars(logger, names, global_vars):
+    """
+    track scalar variables by their names.
+    :param logger:
+    :param names: variable names to log
+    :param global_vars: ``globals()`` or ``locals()``
+    """
     values = {}
     for name in names:
         addkey(values, name, global_vars)
@@ -241,6 +252,12 @@ def track_scalars(logger, names, global_vars):
     print(values)
 
 def track_images(logger, names, global_vars):
+    """
+    track image variables by their names.
+    :param logger:
+    :param names: variable names to log
+    :param global_vars: ``globals()`` or ``locals()``
+    """
     values = {}
     for name in names:
         addkey(values, name, global_vars)

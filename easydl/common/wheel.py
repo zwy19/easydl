@@ -17,6 +17,24 @@ def setGPU(i):
     print('gpu(s) to be used: %s'%str(gpus))
     return NGPU
 
+def selectGPUs(n, max_load=0.1, max_memory=0.1):
+    """
+    select n GPUs with load less than ``max_load`` and memory usage less than ``max_memory``
+
+    it selects GPU automatically, without requirement to check GPU ids
+    :param n: number of GPUs to select
+    :return: isSucceed, GPU used
+    """
+    from gpuutils import getAvailable
+    deviceIDs = getAvailable(order='first', limit=n, maxLoad=max_load, maxMemory=max_memory,
+                             includeNan=False, excludeID=[], excludeUUID=[])
+    if len(deviceIDs) < n:
+        return False, None
+    else:
+        gpus = ','.join([str(x) for x in deviceIDs])
+        setGPU(gpus)
+        return True, gpus
+
 def getHomePath():
     return str(pathlib2.Path.home())
 
