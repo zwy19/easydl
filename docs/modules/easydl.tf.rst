@@ -20,6 +20,13 @@ easydl.tf.wheel module
     :undoc-members:
     :show-inheritance:
 
+easydl.tf.evaluation module
+----------------------
+
+.. automodule:: easydl.tf.evaluation
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Module contents
 ---------------
