@@ -337,7 +337,16 @@ class ImageFolderDataset(BaseImageDataset):
         super(ImageFolderDataset, self).__init__(imsize, is_train, skip_pred, transform)
 
     def _fill_data(self):
-        self.datas = sum([[os.path.join(path, file) for file in files] for path, dirs, files in os.walk(self.root_dir) if files], [])
+        dirs = []
+        for x in os.listdir(self.root_dir):
+            x = join_path(self.root_dir, x)
+            if os.path.isdir(x):
+                dirs.append(x)
+
+        self.datas = []
+        for dir in dirs:
+            self.datas += [os.path.join(dir, file) for file in os.listdir(dir) if os.path.isfile(os.path.join(dir, file))]
+
         self.labels = [file.split(os.sep)[-2] for file in self.datas]
         self.classes = sorted(list(set(self.labels)))
         self.NameToId = {x : i for (i, x) in enumerate(self.classes)}
