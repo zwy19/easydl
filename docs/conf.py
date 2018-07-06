@@ -89,6 +89,8 @@ html_theme = "classic"
 
 html_theme_path = []
 
+html_logo = "../assets/imgs/logo.png"
+
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
@@ -157,10 +159,10 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
-def skip(app, what, name, obj, skip, options):
-    if name == "__init__":
+def my_skip(app, what, name, obj, skip, options):
+    if name == "__init__" or (name.startswith('_') and not name.startswith('__') and not name.startswith('_abc')):
         return False
     return skip
 
 def setup(app):
-    app.connect("autodoc-skip-member", skip)
+    app.connect("autodoc-skip-member", my_skip)

@@ -381,11 +381,11 @@ class Cifar10Dataset(BaseDataset):
         """
         :param root_dir: directory that contains **cifar10 directory with cifar-10-python.tar.gz in it**
 
-        the hierarchy looks like this::
+        the hierarchy looks like this ::
 
-        root_dir
-        |__cifar10
-            |_cifar-10-python.tar.gz
+            root_dir
+            |__cifar10
+                |_cifar-10-python.tar.gz
 
         """
         self.root_dir = root_dir
@@ -409,12 +409,12 @@ class Cifar100Dataset(BaseDataset):
         """
         :param root_dir: directory that contains cifar-100 data
 
-        the hierarchy looks like this::
+        the hierarchy looks like this ::
 
-        root_dir
-        |__cifar-100-python
-            |_test
-            |_train
+            root_dir
+            |__cifar-100-python
+                |_test
+                |_train
 
         """
         self.root_dir = root_dir
