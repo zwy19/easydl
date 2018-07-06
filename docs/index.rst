@@ -51,6 +51,15 @@ we don't have to write the following code anymore ::
 
 What's more, all of the functions/classes in easydl have been introduced to the global scope.
 
+
+install
+==========
+easydl is just a python package. To install easydl, run ::
+
+    pip install easydl
+
+That's it, super easy!
+
 get started!
 =============
 
