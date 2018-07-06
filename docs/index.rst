@@ -1,8 +1,19 @@
+easydl, easy deeplearning!
+===========================
+
+what is easydl
+==============
+
+easydl is a python package that aims to ease the development of deep learning algorithms. To install easydl, run ::
+
+    pip install easydl
+
+That's it, super easy!
 
 easydl can do
 =====================
 
-**easydl** aims to ease the development of deep learning algorithms. It mainly contains wrappers and some commonly used
+easydl mainly contains wrappers and some commonly used
 modules. **easydl** hates repeated code(see `DRY <https://en.wikipedia.org/wiki/Don%27t_repeat_yourself>`_ )
 and coupling code.
 
@@ -50,15 +61,6 @@ we don't have to write the following code anymore ::
     # import torch.nn as nn
 
 What's more, all of the functions/classes in easydl have been introduced to the global scope.
-
-
-install
-==========
-easydl is just a python package. To install easydl, run ::
-
-    pip install easydl
-
-That's it, super easy!
 
 get started!
 =============
