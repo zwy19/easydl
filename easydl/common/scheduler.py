@@ -1,3 +1,5 @@
+import numpy as np
+
 def inverseDecaySheduler(step, initial_lr, gamma=10, power=0.75, max_iter=1000):
     '''
     change as initial_lr * (1 + gamma * min(1.0, iter / max_iter) ) ** (- power)
