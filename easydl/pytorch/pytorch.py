@@ -262,7 +262,6 @@ def track_scalars(logger, names, global_vars):
         values[k] = variable_to_numpy(values[k])
     for k, v in values.items():
         logger.log_scalar(k, v)
-    logger.step += 1
     print(values)
 
 def track_images(logger, names, global_vars):
