@@ -126,3 +126,41 @@ class Logger(object):
         summary = tf.Summary(value=[tf.Summary.Value(tag=tag, histo=hist)])
         self.writer.add_summary(summary, step)
         self.writer.flush()
+
+    def log_bar(self, tag, values, xs=None, step=None):
+        """
+        log bar chart (hack tensorflow to draw a histogram that looks like a bar chart)
+        :param tag:
+        :param values:
+        :param xs:
+        :param step:
+        :return:
+        """
+        if not step:
+            step = self.step
+
+        values = np.asarray(values).flatten()
+        if not xs:
+            axises = list(range(len(values)))
+        else:
+            axises = xs
+
+        # Fill fields of histogram proto
+        hist = tf.HistogramProto()
+        hist.min = float(min(axises))
+        hist.max = float(max(axises))
+        hist.num = sum(values)
+        hist.sum = sum([y * x for (x, y) in zip(axises, values)])
+        hist.sum_squares = sum([y * (x ** 2) for (x, y) in zip(axises, values)])
+
+        for edge in axises:
+            hist.bucket_limit.append(edge - 1e-10)
+            hist.bucket_limit.append(edge + 1e-10)
+        for c in values:
+            hist.bucket.append(0)
+            hist.bucket.append(c)
+
+        # Create and write Summary
+        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, histo=hist)])
+        self.writer.add_summary(summary, self.step)
+        self.writer.flush()

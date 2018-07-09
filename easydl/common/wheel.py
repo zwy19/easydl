@@ -232,3 +232,16 @@ def clear_output():
 
     clear()
     cls()
+
+
+class Nonsense:
+    """
+    placeholder class to support a.b.c().e.f.g.h with nonsense value
+    """
+    def __getattr__(self, item):
+        if item not in self.__dict__:
+            self.__dict__[item] = Nonsense()
+        return self.__dict__[item]
+
+    def __call__(self, *args, **kwargs):
+        return Nonsense()
