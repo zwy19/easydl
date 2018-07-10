@@ -6,6 +6,7 @@ import torchvision.models as models
 import torchvision.utils as vutils
 from collections import Iterable
 import math
+import numpy as np
 
 EPSILON = 1e-20
 
@@ -224,7 +225,8 @@ def variable_to_numpy(x):
     """
     ans = x.cpu().data.numpy()
     if torch.numel(x) == 1:
-        return float(ans)
+        # make sure ans has no shape. (float requires number rather than ndarray)
+        return float(np.sum(ans))
     return ans
 
 def merge_ncwh_to_one_image(x):
