@@ -96,7 +96,7 @@ Let's say we have 10 tasks and 5 GPUs. We have to run 5 tasks at first, then eve
 has finished. If there are GPUs available, we start a new task until 10 tasks have been finished. The regularly-checking
 can be really annoying cause I can't watch a two-hour movie without break.
 
-easydl provides a command :py:func:``easydl.common.commands.runTask``. It will be installed as a command available
+easydl provides a command :py:func:`easydl.common.commands.runTask`. It will be installed as a command available
 within shell after easydl is installed. The basic usage is ::
 
     runTask tasks.txt --user yourUserName
