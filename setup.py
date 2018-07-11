@@ -5,7 +5,7 @@ setup(name='easydl',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
-      install_requires=['tensorflow','tensorlayer','tensorpack','matplotlib','pathlib2'],
+      install_requires=['tensorflow','tensorlayer','tensorpack','matplotlib','pathlib2', 'docopt'],
       entry_points={
         'console_scripts': [
                 'runTask= easydl:runTask'],
