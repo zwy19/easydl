@@ -3,10 +3,11 @@ License: Copyleft
 """
 __author__ = "Michael Gygli"
 
+import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorlayer as tl
 from StringIO import StringIO
-import matplotlib.pyplot as plt
+
 import numpy as np
 from wheel import to_gray_np, to_rgb_np
 import os
