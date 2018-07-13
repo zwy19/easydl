@@ -10,7 +10,7 @@ def runTask():
       --needGPU=<int>     number of GPUs per task/line [default: 1].
       --maxLoad=<float>     GPU with load larger than this will be regarded as not available [default: 0.1].
       --maxMemory=<float>    GPU with memory usage larger than this will be regarded as not available [default: 0.1].
-      --sleeptime=<seconds>    sleep time after executing one task/line [default: 60.0].
+      --sleeptime=<seconds>    sleep time after executing one task/line [default: 180.0].
       --user=<string>           query how many GPUs user used so that it does not violatethe limitation of maxGPU per user
 
 
