@@ -120,9 +120,9 @@ class Accumulator(dict):
         # do whatever with accumulator['weight'] and accumulator['coeff']
 
     """
-    def __init__(self, names, accumulate_fn=np.concatenate):
+    def __init__(self, name_or_names, accumulate_fn=np.concatenate):
         super(Accumulator, self).__init__()
-        self.names = names
+        self.names = [name_or_names] if isinstance(name_or_names, str) else name_or_names
         self.accumulate_fn = accumulate_fn
         for name in self.names:
             self.__setitem__(name, [])
