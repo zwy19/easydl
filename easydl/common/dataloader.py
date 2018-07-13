@@ -238,6 +238,8 @@ class BaseImageDataset(BaseDataset):
     ``float`` type.
 
     by default, the returned label is int. to make the label one-hot, one should do it in ``transform``
+
+    if you don't want to resize the image, leave the ``imsize`` argument to be ``None``
     """
     def __init__(self, imsize=224, is_train=True, skip_pred=None, transform=None):
         self.imsize = imsize
@@ -245,7 +247,8 @@ class BaseImageDataset(BaseDataset):
 
     def _get_one_data(self, data, label):
         im = imread(data, mode='RGB')
-        im = imresize(im, (self.imsize, self.imsize))
+        if self.imsize:
+            im = imresize(im, (self.imsize, self.imsize))
         return im, label
 
 
