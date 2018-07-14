@@ -27,6 +27,7 @@ class Logger(object):
         tl.files.exists_or_mkdir(log_dir)
         self.writer = tf.summary.FileWriter(log_dir)
         self.step = 0
+        self.log_dir = log_dir
 
     def log_scalar(self, tag, value, step=None):
         """
