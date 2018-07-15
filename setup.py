@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='1.3.0',
-      description='"add gan evaluation(fid and inception score)"',
+      version='1.4.0',
+      description='"accumulating updates and bug fixes"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
