@@ -106,7 +106,7 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
     #. read a data (usually read from a file path to get the image) by calling ``_get_one_data``,
         pass it to ``transform``, and return the results
     """
-    def __init__(self, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
         :param bool is_train: train mode or test mode
         :param skip_pred: predicate with signature of ``(data, label, is_train) -> bool`` . each data will be passed into
@@ -118,10 +118,17 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
             in case that one may want to use different transform strategy in test and train mode (for example, random
             cropping in training and deterministic cropping in test). the predicate needs the argument ``label``
             so that users can have complete control (maybe some transform needs the label information?)
+        :param sample_weight: sampling weight in training. it can have shape of [N] where N is number of data points in dataset.
+            it can also be a function of ``(data, label) -> number`` . numbers are not required to sum up to 1, they will be
+            normalized to sum up tp 1 in this class. weight is determined in initializing and then fixed. To be precise, after
+            using ``skip_pred`` to filter data, ``sample_weight`` is used (if ``sample_weight`` is a function).
+            Note that the parameter data is not the real data returned by ``_get_one_data``. it is data filled by ``_fill_data``.
+            Usually the data is image file name. We recommend the latter way of providing a function as ``sample_weight``
         """
         self.is_train = is_train
         self.skip_pred = skip_pred or (lambda data, label, is_train : False)
         self.transform = transform or (lambda data, label, is_train : (data, label))
+        self.sample_weight = sample_weight or (lambda data, label : 1.0)
 
         self.datas = []
         self.labels = []
@@ -144,6 +151,14 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
         self.datas = [x[0] for x in tmp]
         self.labels = [x[1] for x in tmp]
 
+        if callable(self.sample_weight):
+            self._weight = [self.sample_weight(x, y) for (x, y) in zip(self.datas, self.labels)]
+        else:
+            self._weight = self.sample_weight
+        self._weight = np.asarray(self._weight, dtype=np.float32).reshape(-1)
+        assert len(self._weight) == len(self.datas), 'dimension not match!'
+        self._weight = self._weight / np.sum(self._weight)
+
     def size(self):
         return len(self.datas)
 
@@ -160,7 +175,7 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
         size = self.size()
         ids = list(range(size))
         for _ in range(size):
-            id = random.choice(ids) if self.is_train else _
+            id = np.random.choice(ids, p=self._weight) if self.is_train else _
             data, label = self._get_one_data(self.datas[id], self.labels[id])
             data, label = self.transform(data, label, self.is_train)
             yield np.asarray(data), np.asarray([label]) if isinstance(label, numbers.Number) else label
@@ -177,9 +192,9 @@ class TestDataset(BaseDataset):
         for (x, y) in TestDataset(is_train=False).get_data():
             print((x, y))
     """
-    def __init__(self, N=100,  is_train=True, skip_pred=None, transform=None):
+    def __init__(self, N=100,  is_train=True, skip_pred=None, transform=None, sample_weight=None):
         self.N = N
-        super(TestDataset, self).__init__(is_train=is_train, skip_pred=skip_pred, transform=transform)
+        super(TestDataset, self).__init__(is_train=is_train, skip_pred=skip_pred, transform=transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         self.datas = [[i, i + 1] for i in range(self.N)]
@@ -241,9 +256,9 @@ class BaseImageDataset(BaseDataset):
 
     if you don't want to resize the image, leave the ``imsize`` argument to be ``None``
     """
-    def __init__(self, imsize=224, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, imsize=224, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         self.imsize = imsize
-        super(BaseImageDataset, self).__init__(is_train, skip_pred, transform)
+        super(BaseImageDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _get_one_data(self, data, label):
         im = imread(data, mode='RGB')
@@ -271,7 +286,7 @@ class FileListDataset(BaseImageDataset):
 
     i.e., each line contains an image path and a label id
     """
-    def __init__(self, list_path, path_prefix='', imsize=224, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, list_path, path_prefix='', imsize=224, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
         :param str list_path: absolute path of image list file (which contains (path, label_id) in each line) **avoid space in path!**
         :param str path_prefix: prefix to add to each line in image list to get the absolute path of image,
@@ -280,7 +295,7 @@ class FileListDataset(BaseImageDataset):
         self.list_path = list_path
         self.path_prefix = path_prefix
 
-        super(FileListDataset, self).__init__(imsize=imsize, is_train=is_train, skip_pred=skip_pred, transform=transform)
+        super(FileListDataset, self).__init__(imsize=imsize, is_train=is_train, skip_pred=skip_pred, transform=transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         with open(self.list_path, 'r') as f:
@@ -302,13 +317,13 @@ class UnLabeledImageDataset(BaseImageDataset):
     **although this is UnLabeledImageDataset, it returns useless labels to have similar interface with other datasets**
     """
 
-    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
 
         :param root_dir:  search ``root_dir`` recursively for all files (treat all files as image files)
         """
         self.root_dir = root_dir
-        super(UnLabeledImageDataset, self).__init__(imsize, is_train, skip_pred, transform)
+        super(UnLabeledImageDataset, self).__init__(imsize, is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         self.datas = sum(
@@ -335,9 +350,9 @@ class ImageFolderDataset(BaseImageDataset):
 
     to convert between class names and integers, use ``NameToId`` and ``IdToName`` properties
     """
-    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, root_dir,imsize=128, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         self.root_dir = root_dir
-        super(ImageFolderDataset, self).__init__(imsize, is_train, skip_pred, transform)
+        super(ImageFolderDataset, self).__init__(imsize, is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         dirs = []
@@ -362,12 +377,12 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 
 class MNISTDataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
         :param root_dir: directory that contains **train-images-idx3-ubyte.gz** etc.
         """
         self.root_dir = root_dir
-        super(MNISTDataset, self).__init__(is_train, skip_pred, transform)
+        super(MNISTDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         self.mnist = input_data.read_data_sets(train_dir=self.root_dir, one_hot=False)
@@ -380,7 +395,7 @@ class MNISTDataset(BaseDataset):
 
     
 class Cifar10Dataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
         :param root_dir: directory that contains **cifar10 directory with cifar-10-python.tar.gz in it**
 
@@ -392,7 +407,7 @@ class Cifar10Dataset(BaseDataset):
 
         """
         self.root_dir = root_dir
-        super(Cifar10Dataset, self).__init__(is_train, skip_pred, transform)
+        super(Cifar10Dataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         self.x_train, self.y_train, self.x_test, self.y_test = tl.files.load_cifar10_dataset(shape=(-1, 32, 32, 3),
@@ -408,7 +423,7 @@ class Cifar10Dataset(BaseDataset):
 
 
 class Cifar100Dataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None):
+    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None):
         """
         :param root_dir: directory that contains cifar-100 data
 
@@ -421,7 +436,7 @@ class Cifar100Dataset(BaseDataset):
 
         """
         self.root_dir = root_dir
-        super(Cifar100Dataset, self).__init__(is_train, skip_pred, transform)
+        super(Cifar100Dataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight)
 
     def _fill_data(self):
         self.cifar100 = cPickle.load(open(os.path.join(self.root_dir, 'cifar-100-python/train'), 'rb'))
