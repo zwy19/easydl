@@ -2,7 +2,7 @@ import sys
 import os
 import traceback
 
-sys.path.append(os.path.abspath('./'))
+sys.path.insert(os.path.dirname(os.path.abspath(__file__)))
 from common import *
 
 try:
@@ -22,3 +22,5 @@ except ImportError as e:
 import warnings
 
 warnings.filterwarnings('ignore', '.*')
+
+sys.path.remove(os.path.dirname(os.path.abspath(__file__)))
