@@ -6,7 +6,8 @@ __author__ = "Michael Gygli"
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorlayer as tl
-from StringIO import StringIO
+import six
+StringIO = six.StringIO
 
 import numpy as np
 from wheel import to_gray_np, to_rgb_np

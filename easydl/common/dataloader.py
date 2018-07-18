@@ -6,7 +6,7 @@ import random
 import numbers
 from scipy.misc import imread, imresize
 import tensorlayer as tl
-import cPickle
+from six.moves import cPickle
 from wheel import *
 
 import warnings
