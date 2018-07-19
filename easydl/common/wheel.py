@@ -238,6 +238,7 @@ class Nonsense:
     """
     placeholder class to support a.b.c().e.f.g.h with nonsense value
     """
+
     def __getattr__(self, item):
         if item not in self.__dict__:
             self.__dict__[item] = Nonsense()
@@ -245,3 +246,9 @@ class Nonsense:
 
     def __call__(self, *args, **kwargs):
         return Nonsense()
+
+    def __str__(self):
+        return "Nonsense object!"
+
+    def __repr__(self):
+        return "Nonsense object!"
