@@ -40,7 +40,6 @@ def runTask():
     user = args['--user']
     sleeptime = float(args['--sleeptime'])
 
-    import cPickle
     from subprocess import Popen, PIPE
     import time
     from gpuutils import GPU, getGPUs, getAvailable, getAvailability, getFirstAvailable, showUtilization, __version__
@@ -52,7 +51,7 @@ def runTask():
             lines = [line for line in f if line.strip()]
         if lines:
             while True:
-                s = 'for x in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits); do ps -f -p $x | grep "%s"; done' % user
+                s = 'for x in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader,nounits); do ps -p $x -o pid,user | grep "%s"; done' % user
                 p = Popen(s, stdout=PIPE, shell=True)
                 ans = p.stdout.read()
                 mygpu = len(ans.splitlines())
