@@ -138,7 +138,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 def _handle_path(path):
     path = pathlib.Path(path)
     files = list(path.glob('*.jpg')) + list(path.glob('*.png'))
-    x = np.array([imread(str(fn)).astype(np.float32) for fn in files])
+    x = np.array([imread(str(fn),mode='RGB').astype(np.float32) for fn in files])
     return x
 
 

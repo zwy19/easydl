@@ -94,21 +94,23 @@ class GradientReverseLayer(torch.autograd.Function):
     usage:(can't be used in nn.Sequential, not a subclass of nn.Module)::
 
         x = Variable(torch.ones(1, 2), requires_grad=True)
-        grl = GradientReverseLayer()
-        grl.coeff = 0.5
-        y = grl(x)
+        grl = GradientReverseLayer.apply
+        y = grl(0.5, x)
 
         y.backward(torch.ones_like(y))
 
         print(x.grad)
 
     """
-    def __init__(self):
-        self.coeff = 1.0
-    def forward(self, input):
+    @staticmethod
+    def forward(ctx, coeff, input):
+        ctx.coeff = coeff
         return input
-    def backward(self, gradOutput):
-        return -self.coeff * gradOutput
+
+    @staticmethod
+    def backward(ctx, grad_outputs):
+        coeff = ctx.coeff
+        return None, -coeff * grad_outputs
 
 
 class GradientReverseModule(nn.Module):
@@ -134,12 +136,12 @@ class GradientReverseModule(nn.Module):
         super(GradientReverseModule, self).__init__()
         self.scheduler = scheduler
         self.global_step = 0.0
-        self.grl = GradientReverseLayer()
+        self.coeff = 0.0
+        self.grl = GradientReverseLayer.apply
     def forward(self, x):
-        coeff = self.scheduler(self.global_step)
+        self.coeff = self.scheduler(self.global_step)
         self.global_step += 1.0
-        self.grl.coeff = coeff
-        return self.grl(x)
+        return self.grl(self.coeff, x)
 
 
 class OptimizerManager:
