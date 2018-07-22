@@ -120,6 +120,7 @@ class Accumulator(dict):
         # do whatever with accumulator['weight'] and accumulator['coeff']
 
     """
+
     def __init__(self, name_or_names, accumulate_fn=np.concatenate):
         super(Accumulator, self).__init__()
         self.names = [name_or_names] if isinstance(name_or_names, str) else name_or_names
@@ -135,11 +136,13 @@ class Accumulator(dict):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        for name in self.names:
-            self.__setitem__(name, self.accumulate_fn(self.__getitem__(name)))
         if exc_tb:
             print(exc_tb)
             return False
+
+        for name in self.names:
+            self.__setitem__(name, self.accumulate_fn(self.__getitem__(name)))
+
         return True
 
 def sphere_sample(size):
