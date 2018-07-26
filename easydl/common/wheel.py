@@ -289,7 +289,7 @@ def plot_confusion_matrix(cm, true_classes,pred_classes=None,
     plt.title(title)
     plt.colorbar(fraction=0.046, pad=0.04)
     true_tick_marks = np.arange(len(true_classes))
-    plt.yticks(true_classes, true_classes)
+    plt.yticks(true_tick_marks, true_classes)
     pred_tick_marks = np.arange(len(pred_classes))
     plt.xticks(pred_tick_marks, pred_classes, rotation=45)
 
