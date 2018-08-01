@@ -299,7 +299,7 @@ class FileListDataset(BaseImageDataset):
 
     def _fill_data(self):
         with open(self.list_path, 'r') as f:
-            data = [[line.split()[0], line.split()[1]] for line in f.readlines() if line.strip()] # avoid empty lines
+            data = [[line.split()[0], line.split()[1] if len(line.split()) > 1 else '0'] for line in f.readlines() if line.strip()] # avoid empty lines
             self.datas = [join_path(self.path_prefix, x[0]) for x in data]
             try:
                 self.labels = [int(x[1]) for x in data]
