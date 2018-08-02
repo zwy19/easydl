@@ -140,7 +140,8 @@ class GradientReverseModule(nn.Module):
         self.grl = GradientReverseLayer.apply
     def forward(self, x):
         self.coeff = self.scheduler(self.global_step)
-        self.global_step += 1.0
+        if self.training:
+            self.global_step += 1.0
         return self.grl(self.coeff, x)
 
 
