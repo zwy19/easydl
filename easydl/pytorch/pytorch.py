@@ -105,7 +105,8 @@ class GradientReverseLayer(torch.autograd.Function):
     @staticmethod
     def forward(ctx, coeff, input):
         ctx.coeff = coeff
-        return input
+        # this is necessary. if we just return ``input``, ``backward`` will not be called sometimes
+        return input.view_as(input)
 
     @staticmethod
     def backward(ctx, grad_outputs):
