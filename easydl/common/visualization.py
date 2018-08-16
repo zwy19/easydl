@@ -17,4 +17,4 @@ def plot_decision_boundary(predictor, xs, ys):
     data = np.asarray([xx.flatten(), yy.flatten()]).T
     label = predictor(data)
     label.resize(xx.shape)
-    plt.contour(xx, yy, label)
+    plt.contourf(xx, yy, label, alpha=0.3)
