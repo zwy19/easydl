@@ -276,6 +276,7 @@ def one_hot(n_class, index):
     return tmp
 
 
+from collections import Counter
 class FileListDataset(BaseImageDataset):
     """
     dataset that consists of a file which has the structure of :
@@ -286,18 +287,31 @@ class FileListDataset(BaseImageDataset):
 
     i.e., each line contains an image path and a label id
     """
-    def __init__(self, list_path, path_prefix='', imsize=224, is_train=True, skip_pred=None, transform=None, sample_weight=None):
+    def __init__(self, list_path, path_prefix='', imsize=224, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=None):
         """
         :param str list_path: absolute path of image list file (which contains (path, label_id) in each line) **avoid space in path!**
         :param str path_prefix: prefix to add to each line in image list to get the absolute path of image,
             esp, you should set path_prefix if file path in image list file is relative path
+        :param bool auto_weight: automatically compute sample weight according to label ratio in file list so that
+            each label is sampled in a balanced manner(x is sampled with weight of 1.0 / (number of samples with the same
+            label with x))
         """
         self.list_path = list_path
         self.path_prefix = path_prefix
 
+        if auto_weight:
+            assert sample_weight is None, 'auto_weight and sample_weight are mutually exclusive!'
+            self._fill_data()
+            counter = Counter(self.labels)
+            for x in counter:
+                counter[x] = 1.0 / counter[x]
+            sample_weight = (lambda label : counter[label])
+
         super(FileListDataset, self).__init__(imsize=imsize, is_train=is_train, skip_pred=skip_pred, transform=transform, sample_weight=sample_weight)
 
     def _fill_data(self):
+        if len(self.datas) > 0:
+            return
         with open(self.list_path, 'r') as f:
             data = [[line.split()[0], line.split()[1] if len(line.split()) > 1 else '0'] for line in f.readlines() if line.strip()] # avoid empty lines
             self.datas = [join_path(self.path_prefix, x[0]) for x in data]
