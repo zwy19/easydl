@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='1.6.0',
-      description='"some accumulative update"',
+      version='1.6.1',
+      description='"use countourf for decision boundary"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
