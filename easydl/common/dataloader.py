@@ -438,16 +438,24 @@ from tensorflow.examples.tutorials.mnist import input_data
 
 
 class MNISTDataset(InMemoryImageDataset):
-    def __init__(self, root_dir,imsize=28, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+    def __init__(self, root_dir,imsize=28, is_train=True, skip_pred=None, transform=None,
+                 sample_weight=None, auto_weight=False, use_train_set=None):
         """
         :param root_dir: directory that contains **train-images-idx3-ubyte.gz** etc.
+        :param use_train_set: combined with ``is_train`` to control which part to use. if ``use_train_set`` is None,
+        use training dataset <==> is_train. if ``use_train_set`` is boolean, use training dataset <==> use_train_set
         """
         self.root_dir = root_dir
+        self.use_train_set = use_train_set
         super(MNISTDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
+        if self.use_train_set is None:
+            self.use_train_set = self.is_train
+        else:
+            assert isinstance(self.use_train_set, bool)
         self.mnist = input_data.read_data_sets(train_dir=self.root_dir, one_hot=False)
-        self.current_ds = self.mnist.train if self.is_train else self.mnist.test
+        self.current_ds = self.mnist.train if self.use_train_set else self.mnist.test
         self.datas = self.current_ds.images
         self.labels = self.current_ds.labels
         self.datas.resize((self.datas.shape[0], 28, 28))
@@ -456,7 +464,8 @@ class MNISTDataset(InMemoryImageDataset):
 
 from scipy.io import loadmat
 class SVHNDataset(InMemoryImageDataset):
-    def __init__(self, root_dir, gray=False, imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None,auto_weight=False):
+    def __init__(self, root_dir, gray=False, imsize=32, is_train=True, skip_pred=None, transform=None,
+                 sample_weight=None,auto_weight=False, use_train_set=None):
         """
         :param root_dir: directory that contains **test_32x32.mat and train_32x32.mat**(can be downloaded from
         http://ufldl.stanford.edu/housenumbers/ )
@@ -470,11 +479,16 @@ class SVHNDataset(InMemoryImageDataset):
         **note that we change the digit 0's label to 0.(original label is 10)**
         """
         self.root_dir = root_dir
+        self.use_train_set = use_train_set
         self.gray = gray
         super(SVHNDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
-        data = loadmat(join_path(self.root_dir, 'train_32x32.mat' if self.is_train else 'test_32x32.mat'),
+        if self.use_train_set is None:
+            self.use_train_set = self.is_train
+        else:
+            assert isinstance(self.use_train_set, bool)
+        data = loadmat(join_path(self.root_dir, 'train_32x32.mat' if self.use_train_set else 'test_32x32.mat'),
                        squeeze_me=True,struct_as_record=False)
         self.datas = data['X']
         self.datas = np.transpose(self.datas, axes=[3, 0, 1, 2])
@@ -487,15 +501,21 @@ class SVHNDataset(InMemoryImageDataset):
 
 
 class USPSDataset(InMemoryImageDataset):
-    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None,
+                 sample_weight=None, auto_weight=False, use_train_set=None):
         """
         :param root_dir: directory that contains **usps.h5** (from https://www.kaggle.com/bistaumanga/usps-dataset)
         """
         self.root_dir = root_dir
+        self.use_train_set = use_train_set
         super(USPSDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         import h5py
+        if self.use_train_set is None:
+            self.use_train_set = self.is_train
+        else:
+            assert isinstance(self.use_train_set, bool)
         with h5py.File(join_path(self.root_dir, 'usps.h5'), 'r') as hf:
                 train = hf.get('train')
                 X_tr = train.get('data')[:]
@@ -503,14 +523,15 @@ class USPSDataset(InMemoryImageDataset):
                 test = hf.get('test')
                 X_te = test.get('data')[:]
                 y_te = test.get('target')[:]
-        self.datas = X_tr if self.is_train else X_te
-        self.labels = y_tr if self.is_train else y_te
+        self.datas = X_tr if self.use_train_set else X_te
+        self.labels = y_tr if self.use_train_set else y_te
         self.datas.resize((self.datas.shape[0], 16, 16))
         self._resize_all()
 
 
 class Cifar10Dataset(InMemoryImageDataset):
-    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None,
+                 sample_weight=None, auto_weight=False, use_train_set=None):
         """
         :param root_dir: directory that contains **cifar10 directory with cifar-10-python.tar.gz in it**
 
@@ -522,21 +543,27 @@ class Cifar10Dataset(InMemoryImageDataset):
 
         """
         self.root_dir = root_dir
+        self.use_train_set = use_train_set
         super(Cifar10Dataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
+        if self.use_train_set is None:
+            self.use_train_set = self.is_train
+        else:
+            assert isinstance(self.use_train_set, bool)
         self.x_train, self.y_train, self.x_test, self.y_test = tl.files.load_cifar10_dataset(shape=(-1, 32, 32, 3),
                                                                                              path=self.root_dir)
 
-        self.current_x = self.x_train if self.is_train else self.x_test
-        self.current_y = self.y_train if self.is_train else self.y_test
+        self.current_x = self.x_train if self.use_train_set else self.x_test
+        self.current_y = self.y_train if self.use_train_set else self.y_test
         self.datas = self.current_x
         self.labels = self.current_y
         self._resize_all()
 
 
 class Cifar100Dataset(InMemoryImageDataset):
-    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None,
+                 sample_weight=None, auto_weight=False, use_train_set=None):
         """
         :param root_dir: directory that contains cifar-100 data
 
@@ -549,9 +576,14 @@ class Cifar100Dataset(InMemoryImageDataset):
 
         """
         self.root_dir = root_dir
+        self.use_train_set = use_train_set
         super(Cifar100Dataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
+        if self.use_train_set is None:
+            self.use_train_set = self.is_train
+        else:
+            assert isinstance(self.use_train_set, bool)
         self.cifar100 = cPickle.load(open(os.path.join(self.root_dir, 'cifar-100-python/train'), 'rb'))
         self.x_train = self.cifar100['data']
         self.x_train.resize((self.x_train.shape[0], 3, 32, 32))
@@ -564,8 +596,8 @@ class Cifar100Dataset(InMemoryImageDataset):
         self.x_test = np.transpose(self.x_test, [0, 2, 3, 1])
         self.y_test = self.cifar100_test['fine_labels']
 
-        self.current_x = self.x_train if self.is_train else self.x_test
-        self.current_y = self.y_train if self.is_train else self.y_test
+        self.current_x = self.x_train if self.use_train_set else self.x_test
+        self.current_y = self.y_train if self.use_train_set else self.y_test
         self.datas = self.current_x
         self.labels = self.current_y
         self._resize_all()
