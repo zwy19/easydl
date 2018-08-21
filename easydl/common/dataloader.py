@@ -191,7 +191,13 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
         if self.uniform_weight_flag:
             random.shuffle(ids)
         for _ in range(size):
-            id = np.random.choice(ids, p=self._weight) if self.is_train and not self.uniform_weight_flag else _
+            if not self.is_train:
+                id = _
+            else:
+                if self.uniform_weight_flag:
+                    id = ids[_]
+                else:
+                    id = np.random.choice(ids, p=self._weight)
             data, label = self._get_one_data(self.datas[id], self.labels[id])
             data, label = self.transform(data, label, self.is_train)
             yield np.asarray(data), np.asarray([label]) if isinstance(label, numbers.Number) else label
@@ -393,31 +399,64 @@ class ImageFolderDataset(BaseImageDataset):
         self.labels = [self.NameToId[x] for x in self.labels]
 
 
+class InMemoryImageDataset(BaseDataset):
+    """
+    base image dataset that lives in memory
+
+    ``_get_one_data`` usually just return data and label
+
+    by default, if the data is colored image, then it's in ``uint8`` type; if it's gray image, then it's in
+    ``float`` type.
+
+    by default, the returned label is int. to make the label one-hot, one should do it in ``transform``
+
+    if you don't want to resize the image, leave the ``imsize`` argument to be ``None``
+
+    **it assumes that self.datas is numpy.ndarray with shape [N, h, w, c]**
+    """
+
+    def __init__(self, imsize=224, is_train=True, skip_pred=None, transform=None, sample_weight=None,
+                 auto_weight=False):
+        self.imsize = imsize
+        super(InMemoryImageDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight,
+                                                   auto_weight=auto_weight)
+
+    def _resize_all(self):
+        if self.imsize:
+            tail_one_dimension = True if (len(self.datas.shape) > 3 and self.datas.shape[-1] == 1) else False
+            if tail_one_dimension:
+                self.datas = np.squeeze(self.datas, axis=3)
+            self.datas = np.asarray([imresize(x, (self.imsize, self.imsize)) for x in self.datas], dtype=self.datas.dtype)
+            if tail_one_dimension or len(self.datas.shape) == 3 :
+                self.datas = np.expand_dims(self.datas, axis=3)
+
+    def _get_one_data(self, data, label):
+        return data, label
+
+
 from tensorflow.examples.tutorials.mnist import input_data
 
 
-class MNISTDataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+class MNISTDataset(InMemoryImageDataset):
+    def __init__(self, root_dir,imsize=28, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
         """
         :param root_dir: directory that contains **train-images-idx3-ubyte.gz** etc.
         """
         self.root_dir = root_dir
-        super(MNISTDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight, auto_weight=auto_weight)
+        super(MNISTDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         self.mnist = input_data.read_data_sets(train_dir=self.root_dir, one_hot=False)
         self.current_ds = self.mnist.train if self.is_train else self.mnist.test
         self.datas = self.current_ds.images
         self.labels = self.current_ds.labels
-        self.datas.resize((self.datas.shape[0], 28, 28, 1))
-
-    def _get_one_data(self, data, label):
-        return data, label
+        self.datas.resize((self.datas.shape[0], 28, 28))
+        self._resize_all()
 
 
 from scipy.io import loadmat
-class SVHNDataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None,auto_weight=False):
+class SVHNDataset(InMemoryImageDataset):
+    def __init__(self, root_dir, gray=False, imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None,auto_weight=False):
         """
         :param root_dir: directory that contains **test_32x32.mat and train_32x32.mat**(can be downloaded from
         http://ufldl.stanford.edu/housenumbers/ )
@@ -431,7 +470,8 @@ class SVHNDataset(BaseDataset):
         **note that we change the digit 0's label to 0.(original label is 10)**
         """
         self.root_dir = root_dir
-        super(SVHNDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight, auto_weight=auto_weight)
+        self.gray = gray
+        super(SVHNDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         data = loadmat(join_path(self.root_dir, 'train_32x32.mat' if self.is_train else 'test_32x32.mat'),
@@ -440,18 +480,19 @@ class SVHNDataset(BaseDataset):
         self.datas = np.transpose(self.datas, axes=[3, 0, 1, 2])
         self.labels = data['y'].reshape((-1, 1))
         self.labels[self.labels == 10] = 0
+        if self.gray:
+            from skimage import color
+            self.datas = np.asarray([color.rgb2gray(x) for x in self.datas])
+        self._resize_all()
 
-    def _get_one_data(self, data, label):
-        return data, label
 
-
-class USPSDataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+class USPSDataset(InMemoryImageDataset):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
         """
         :param root_dir: directory that contains **usps.h5** (from https://www.kaggle.com/bistaumanga/usps-dataset)
         """
         self.root_dir = root_dir
-        super(USPSDataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight, auto_weight=auto_weight)
+        super(USPSDataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         import h5py
@@ -464,14 +505,12 @@ class USPSDataset(BaseDataset):
                 y_te = test.get('target')[:]
         self.datas = X_tr if self.is_train else X_te
         self.labels = y_tr if self.is_train else y_te
-        self.datas.resize((self.datas.shape[0], 16, 16, 1))
-
-    def _get_one_data(self, data, label):
-        return data, label
+        self.datas.resize((self.datas.shape[0], 16, 16))
+        self._resize_all()
 
 
-class Cifar10Dataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+class Cifar10Dataset(InMemoryImageDataset):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
         """
         :param root_dir: directory that contains **cifar10 directory with cifar-10-python.tar.gz in it**
 
@@ -483,7 +522,7 @@ class Cifar10Dataset(BaseDataset):
 
         """
         self.root_dir = root_dir
-        super(Cifar10Dataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight, auto_weight=auto_weight)
+        super(Cifar10Dataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         self.x_train, self.y_train, self.x_test, self.y_test = tl.files.load_cifar10_dataset(shape=(-1, 32, 32, 3),
@@ -493,13 +532,11 @@ class Cifar10Dataset(BaseDataset):
         self.current_y = self.y_train if self.is_train else self.y_test
         self.datas = self.current_x
         self.labels = self.current_y
-
-    def _get_one_data(self, data, label):
-        return data, label
+        self._resize_all()
 
 
-class Cifar100Dataset(BaseDataset):
-    def __init__(self, root_dir, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
+class Cifar100Dataset(InMemoryImageDataset):
+    def __init__(self, root_dir,imsize=32, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
         """
         :param root_dir: directory that contains cifar-100 data
 
@@ -512,7 +549,7 @@ class Cifar100Dataset(BaseDataset):
 
         """
         self.root_dir = root_dir
-        super(Cifar100Dataset, self).__init__(is_train, skip_pred, transform, sample_weight=sample_weight, auto_weight=auto_weight)
+        super(Cifar100Dataset, self).__init__(is_train=is_train,  skip_pred=skip_pred, transform=transform,imsize=imsize, sample_weight=sample_weight, auto_weight=auto_weight)
 
     def _fill_data(self):
         self.cifar100 = cPickle.load(open(os.path.join(self.root_dir, 'cifar-100-python/train'), 'rb'))
@@ -529,6 +566,4 @@ class Cifar100Dataset(BaseDataset):
         self.current_y = self.y_train if self.is_train else self.y_test
         self.datas = self.current_x
         self.labels = self.current_y
-
-    def _get_one_data(self, data, label):
-        return data, label
+        self._resize_all()
