@@ -237,7 +237,7 @@ def clear_output():
     cls()
 
 
-class Nonsense:
+class Nonsense(object):
     """
     placeholder class to support a.b.c().e.f.g.h with nonsense value
     """
@@ -257,51 +257,6 @@ class Nonsense:
         return "Nonsense object!"
 
 
-def extended_confusion_matrix(y_true, y_pred, true_labels=None, pred_labels=None):
-    '''
-    compute confusion matrix(extended). classes in ``y_true`` can be different with classes in ``y_pred``.
-    this is useful if you have 12 classes and want to divide them into 2 classes etc
-    '''
-
-    if not true_labels:
-        true_labels = sorted(list(set(list(y_true))))
-    true_label_to_id = {x : i for (i, x) in enumerate(true_labels)}
-    if not pred_labels:
-        pred_labels = true_labels
-    pred_label_to_id = {x : i for (i, x) in enumerate(pred_labels)}
-    confusion_matrix = np.zeros([len(true_labels), len(pred_labels)])
-    for (true, pred) in zip(y_true, y_pred):
-        confusion_matrix[true_label_to_id[true]][pred_label_to_id[pred]] += 1.0
-    return confusion_matrix
-
-
-import matplotlib.pyplot as plt
-def plot_confusion_matrix(cm, true_classes,pred_classes=None,
-                          normalize=False,
-                          title='Confusion matrix',
-                          cmap=plt.cm.Blues):
-    import itertools
-    pred_classes = pred_classes or true_classes
-    if normalize:
-        cm = cm.astype(np.float) / np.sum(cm, axis=1, keepdims=True)
-
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar(fraction=0.046, pad=0.04)
-    true_tick_marks = np.arange(len(true_classes))
-    plt.yticks(true_tick_marks, true_classes)
-    pred_tick_marks = np.arange(len(pred_classes))
-    plt.xticks(pred_tick_marks, pred_classes, rotation=45)
-
-
-    fmt = '.2f' if normalize else 'd'
-    thresh = cm.max() / 2.
-    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        plt.text(j, i, format(cm[i, j], fmt),
-                 horizontalalignment="center",
-                 color="white" if cm[i, j] > thresh else "black")
-
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-    plt.show()
+def clear_and_mkdir(dir):
+    os.system('rm %s -r' % dir)
+    os.system('mkdir %s' % dir)
