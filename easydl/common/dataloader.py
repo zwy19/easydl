@@ -105,6 +105,15 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
 
     #. read a data (usually read from a file path to get the image) by calling ``_get_one_data``,
         pass it to ``transform``, and return the results
+
+    **Notice: this dataset supports multiple data / label **. e.g, you can have two images as data and one label(similarity, for example).
+    To achieve this in an unified framework, the ``data`` argument in ``transform`` should be list of ndarray.
+    We only treat ndarray as valid components. if ``data`` returned by ``transform`` is ndarray, it is directly returned.
+    else, each ndarray component in ``data`` will be returned separately.i.e, you can do the following::
+
+        for (component1, component2, label) in ds.get_data():
+            # do whatever
+
     """
     def __init__(self, is_train=True, skip_pred=None, transform=None, sample_weight=None, auto_weight=False):
         """
@@ -200,7 +209,11 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
                     id = np.random.choice(ids, p=self._weight)
             data, label = self._get_one_data(self.datas[id], self.labels[id])
             data, label = self.transform(data, label, self.is_train)
-            yield np.asarray(data), np.asarray([label]) if isinstance(label, numbers.Number) else label
+            # to support multiple data / label (like two images and one similarity score )
+            label = np.asarray([label])if isinstance(label, numbers.Number) else label
+            data = list(data) if not isinstance(data, np.ndarray) else [data]
+            label = list(label) if not isinstance(label, np.ndarray) else [label]
+            yield data + label
 
 
 class TestDataset(BaseDataset):

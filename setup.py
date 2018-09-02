@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='1.7.1',
-      description='"digits dataset support imsize and gray argument now"',
+      version='1.8.0',
+      description='"multiple data / label support for dataset"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
