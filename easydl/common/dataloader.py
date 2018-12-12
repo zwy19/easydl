@@ -219,7 +219,7 @@ class BaseDataset(tensorpack.dataflow.RNGDataFlow):
             data = list(data) if not isinstance(data, np.ndarray) else [data]
             label = list(label) if not isinstance(label, np.ndarray) else [label]
             id = np.asarray([id])
-            yield data + label + [id]
+            yield data + label + ([id] if self.return_id else [])
 
 
 class TestDataset(BaseDataset):
