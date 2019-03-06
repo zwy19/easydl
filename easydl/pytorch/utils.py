@@ -136,11 +136,11 @@ class GradientReverseModule(nn.Module):
     def __init__(self, scheduler):
         super(GradientReverseModule, self).__init__()
         self.scheduler = scheduler
-        self.global_step = 0.0
+        self.register_buffer('global_step', torch.zeros(1))
         self.coeff = 0.0
         self.grl = GradientReverseLayer.apply
     def forward(self, x):
-        self.coeff = self.scheduler(self.global_step)
+        self.coeff = self.scheduler(self.global_step.item())
         if self.training:
             self.global_step += 1.0
         return self.grl(self.coeff, x)
