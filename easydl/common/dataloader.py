@@ -1,3 +1,5 @@
+__package__ = 'easydl.common'
+
 import os
 import numpy as np
 import tensorpack
@@ -5,11 +7,13 @@ import time
 import random
 import numbers
 from scipy.misc import imread, imresize
-import tensorlayer as tl
 from six.moves import cPickle
-from wheel import *
-
+from .wheel import *
 import warnings
+try:
+    import tensorlayer as tl
+except ImportError as e:
+    warnings.warn('tensorlayer is not available, CIFAR-10 and CIFAR-100 are not available')
 
 # disable warning of imread
 warnings.filterwarnings('ignore', message='.*', category=Warning)
@@ -471,9 +475,6 @@ class InMemoryImageDataset(BaseDataset):
         return data, label
 
 
-from tensorflow.examples.tutorials.mnist import input_data
-
-
 class MNISTDataset(InMemoryImageDataset):
     def __init__(self, root_dir, imsize=28, is_train=True, skip_pred=None, transform=None,
                  sample_weight=None, auto_weight=False, use_train_set=None, return_id=False):
@@ -492,6 +493,7 @@ class MNISTDataset(InMemoryImageDataset):
             self.use_train_set = self.is_train
         else:
             assert isinstance(self.use_train_set, bool)
+        from tensorflow.examples.tutorials.mnist import input_data
         self.mnist = input_data.read_data_sets(train_dir=self.root_dir, one_hot=False)
         self.current_ds = self.mnist.train if self.use_train_set else self.mnist.test
         self.datas = self.current_ds.images

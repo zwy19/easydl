@@ -1,3 +1,6 @@
+__package__ = 'easydl.common'
+
+
 def runTask():
     """
     Usage:
@@ -39,10 +42,10 @@ def runTask():
     file = args['<file>']
     user = args['--user']
     sleeptime = float(args['--sleeptime'])
-
+    from .gpuutils import select_GPUs
     from subprocess import Popen, PIPE
     import time
-    from gpuutils import GPU, getGPUs, getAvailable, getAvailability, getFirstAvailable, showUtilization, __version__
+
     import random
     import os
 
@@ -55,8 +58,7 @@ def runTask():
                 p = Popen(s, stdout=PIPE, shell=True)
                 ans = p.stdout.read()
                 mygpu = len(ans.splitlines())
-                deviceIDs = getAvailable(order='first', limit=needGPU, maxLoad=maxLoad, maxMemory=maxMemory,
-                                         includeNan=False, excludeID=[], excludeUUID=[])
+                deviceIDs = select_GPUs(N_per_process=needGPU, max_utilization=maxLoad,max_memory_usage=maxMemory)
                 find = False
                 if mygpu < maxGPU and len(deviceIDs) >= needGPU:
                     os.system(lines[0].strip())
