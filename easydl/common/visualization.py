@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def plot_decision_boundary(predictor, xs, ys):
     '''
     plot 2D decision boundary for a classifier.

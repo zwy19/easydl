@@ -113,6 +113,7 @@ class Accumulator(dict):
 
         return True
 
+
 def sphere_sample(size):
     '''
     sample noise from high dimensional gaussian distribution and project it to high dimension sphere of unit ball(with L2 norm = 1)
@@ -120,6 +121,7 @@ def sphere_sample(size):
     z = np.random.normal(size=size)
     z = z / (np.sqrt(np.sum(z**2, axis=1, keepdims=True)) + 1e-6)
     return z.astype(np.float32)
+
 
 def sphere_interpolate(a, b, n=64):
     '''
@@ -132,6 +134,7 @@ def sphere_interpolate(a, b, n=64):
     mus = [x * 1.0 / (n - 1) for x in range(n)]
     ans = np.asarray([(np.sin((1.0 - mu) * theta) * a + np.sin(mu * theta) * b) / np.sin(theta) for mu in mus], dtype=np.float32)
     return ans
+
 
 def mergeImage_color(images, rows, cols=None):
     '''
@@ -147,6 +150,7 @@ def mergeImage_color(images, rows, cols=None):
         img[j*h:j*h+h, i*w:i*w+w, :] = image
     return img
 
+
 def mergeImage_gray(images, rows, cols=None):
     '''
     images:(np.ndarray) 3D array, [N, H, W], C = 3
@@ -161,6 +165,7 @@ def mergeImage_gray(images, rows, cols=None):
         img[j*h:j*h+h, i*w:i*w+w] = image
     return img
 
+
 def to_gray_np(img):
     '''
     normalize a img to lie in the range of [0, 1], turning it into a gray image
@@ -168,6 +173,7 @@ def to_gray_np(img):
     img = img.astype(np.float32)
     img = ((img - img.min()) / (img.max() - img.min()) * 1).astype(np.float32)
     return img
+
 
 def to_rgb_np(img):
     '''
@@ -177,6 +183,7 @@ def to_rgb_np(img):
     img = ((img - img.min()) / (img.max() - img.min()) * 255).astype(np.uint8)
     return img
 
+
 def getID():
     '''
     return an unique id on each call (useful when you need a sequence of unique identifiers)
@@ -184,6 +191,7 @@ def getID():
     getID.x += 1
     return getID.x
 getID.x = 0
+
 
 def clear_output():
     """

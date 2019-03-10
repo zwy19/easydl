@@ -2,8 +2,6 @@ import torch
 import sys
 
 dist = sys.argv and any(['--local_rank' in x for x in sys.argv])
-if dist:
-    torch.distributed.init_process_group(backend='nccl')
 
 
 def get_available_GPUs(N, max_utilization=.5, max_memory_usage=.5):
@@ -34,6 +32,7 @@ def get_available_GPUs(N, max_utilization=.5, max_memory_usage=.5):
     available = gpu_ids[:N]
     return list(available)
 
+
 def select_GPUs(N_per_process, max_utilization=.5, max_memory_usage=.5):
     '''
     select `N_per_process` GPUs.
@@ -48,7 +47,11 @@ def select_GPUs(N_per_process, max_utilization=.5, max_memory_usage=.5):
     '''
     if not dist:
         return get_available_GPUs(N_per_process, max_utilization, max_memory_usage)
-    rank = torch.distributed.get_rank()
+    try:
+        rank = torch.distributed.get_rank()
+    except Exception as e:
+        print('please call torch.distributed.init_process_group first')
+        raise e
     world_size = torch.distributed.get_world_size()
     tensor = torch.zeros(world_size * N_per_process, dtype=torch.int).cuda()
     if rank == 0:
