@@ -11,8 +11,7 @@ try:
     import tensorflow
     from tf import *
 except ImportError as e:
-    print('tensorflow not available!')
-    traceback.print_exc()
+    print('[easydl] tensorflow not available!')
 
 import warnings
 

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='2.0.6',
-      description='"bugfix in one_hot"',
+      version='2.0.7',
+      description='"minor doc fix"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
