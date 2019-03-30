@@ -194,24 +194,20 @@ def getID():
 getID.x = 0
 
 
+def is_in_notebook():
+    import sys
+    return 'ipykernel' in sys.modules
+
+
 def clear_output():
     """
     clear output for both jupyter notebook and the console
     """
-    def clear():
-        return
-    try:
-        from IPython.display import clear_output as clear
-    except ImportError as e:
-        pass
-
     import os
-
-    def cls():
-        os.system('cls' if os.name == 'nt' else 'clear')
-
-    clear()
-    cls()
+    os.system('cls' if os.name == 'nt' else 'clear')
+    if is_in_notebook():
+        from IPython.display import clear_output as clear
+        clear()
 
 
 class Nonsense(object):

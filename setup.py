@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='2.0.4',
-      description='"Remove duplicate functions"',
+      version='2.0.5',
+      description='"Update is_in_notebook"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],
