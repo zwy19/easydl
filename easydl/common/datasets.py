@@ -9,7 +9,7 @@ from .wheel import *
 def one_hot(class_ids, num_classes):
     labels = torch.tensor(class_ids).view(-1, 1)
     batch_size = labels.numel()
-    return torch.zeros(batch_size, num_classes, dtype=torch.float).scatter_(1, labels, 1)
+    return torch.zeros(batch_size, num_classes, dtype=torch.float, device=labels.device).scatter_(1, labels, 1)
 
 
 class TestDataset(Dataset):
