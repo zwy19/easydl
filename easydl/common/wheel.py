@@ -49,13 +49,14 @@ class AccuracyCounter:
 
         counter = AccuracyCounter()
         iterate over test set:
-            counter.addOntBatch(predict, label) -> return accuracy in this mini-batch
+            counter.addOneBatch(predict, label) -> return accuracy in this mini-batch
         counter.reportAccuracy() -> return accuracy over whole test set
     """
     def __init__(self):
         self.Ncorrect = 0.0
         self.Ntotal = 0.0
-    def addOntBatch(self, predict, label):
+
+    def addOneBatch(self, predict, label):
         assert predict.shape == label.shape
         correct_prediction = np.equal(np.argmax(predict, 1), np.argmax(label, 1))
         Ncorrect = np.sum(correct_prediction.astype(np.float32))

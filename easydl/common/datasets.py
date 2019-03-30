@@ -65,16 +65,18 @@ class FileListDataset(BaseImageDataset):
     i.e., each line contains an image path and a label id
     """
 
-    def __init__(self, list_path, path_prefix='', transform=None, return_id=False, num_classes=None):
+    def __init__(self, list_path, path_prefix='', transform=None, return_id=False, num_classes=None, filter=None):
         """
         :param str list_path: absolute path of image list file (which contains (path, label_id) in each line) **avoid space in path!**
         :param str path_prefix: prefix to add to each line in image list to get the absolute path of image,
             esp, you should set path_prefix if file path in image list file is relative path
         :param int num_classes: if not specified, ``max(labels) + 1`` is used
+        :param int -> bool filter: filter out the data to be used
         """
         super(FileListDataset, self).__init__(transform=transform, return_id = return_id)
         self.list_path = list_path
         self.path_prefix = path_prefix
+        filter = filter or (lambda x : True)
 
         with open(self.list_path, 'r') as f:
             data = [[line.split()[0], line.split()[1] if len(line.split()) > 1 else '0'] for line in f.readlines() if
@@ -86,7 +88,10 @@ class FileListDataset(BaseImageDataset):
                 print('invalid label number, maybe there is a space in the image path?')
                 raise e
 
-        self.num_classes = num_classes or max(self.labels)
+        ans = [(x, y) for (x, y) in zip(self.datas, self.labels) if filter(y)]
+        self.datas, self.labels = zip(*ans)
+
+        self.num_classes = num_classes or max(self.labels) + 1
 
 
 class UnLabeledImageDataset(BaseImageDataset):
