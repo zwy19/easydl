@@ -79,8 +79,19 @@ class FileListDataset(BaseImageDataset):
         filter = filter or (lambda x : True)
 
         with open(self.list_path, 'r') as f:
-            data = [[line.split()[0], line.split()[1] if len(line.split()) > 1 else '0'] for line in f.readlines() if
-                    line.strip()]  # avoid empty lines
+            data = []
+            for line in f.readlines():
+                line = line.strip()
+                if line: # avoid empty lines
+                    ans = line.split()
+                    if len(ans) == 1:
+                        # no labels provided
+                        data.append([ans[0], '0'])
+                    elif len(ans) >= 2:
+                        # add support for spaces in file path
+                        label = ans[-1]
+                        file = line[:-len(label)].strip()
+                        data.append([file, label])
             self.datas = [join_path(self.path_prefix, x[0]) for x in data]
             try:
                 self.labels = [int(x[1]) for x in data]
