@@ -21,7 +21,7 @@ def runTask():
 
     positional arguments:
       file                  file that contains one task per line (should end with
-                            & to be run background)
+                            & to be run background. If not, & will be appended automatically.)
 
     optional arguments:
       -h, --help            show this help message and exit
@@ -56,7 +56,7 @@ def runTask():
     '''
     import argparse
     parser = argparse.ArgumentParser(prog='runTask', formatter_class=argparse.ArgumentDefaultsHelpFormatter, description=help_msg)
-    parser.add_argument('file', nargs=1, help='file that contains one task per line (should end with & to be run background)')
+    parser.add_argument('file', nargs=1, help='file that contains one task per line (should end with & to be run background. If not, & will be appended automatically.)')
     parser.add_argument('--maxGPU', type=int, default=100, help='maximum GPU to use by one user')
     parser.add_argument('--needGPU', type=int, default=1, help='number of GPUs per task/line')
     parser.add_argument('--maxLoad', type=float, default=0.1, help='GPU with load larger than this will be regarded as not available')
@@ -95,8 +95,11 @@ def runTask():
                     deviceIDs = []
                 find = False
                 if mygpu < maxGPU and len(deviceIDs) >= needGPU:
-                    os.system(lines[0].strip())
-                    print('runing command(%s)' % lines[0].strip())
+                    command = lines[0].strip()
+                    if not command.endswith('&'):
+                        command += ' &'
+                    os.system(command)
+                    print('runing command(%s)' % command)
                     find = True
                 time.sleep(sleeptime)
                 if find:
