@@ -88,7 +88,11 @@ def runTask():
                 p = Popen(s, stdout=PIPE, shell=True)
                 ans = p.stdout.read()
                 mygpu = len(ans.splitlines())
-                deviceIDs = select_GPUs(N_per_process=needGPU, max_utilization=maxLoad,max_memory_usage=maxMemory)
+                deviceIDs = []
+                try:
+                    deviceIDs = select_GPUs(N_per_process=needGPU, max_utilization=maxLoad,max_memory_usage=maxMemory)
+                except Exception as e:
+                    deviceIDs = []
                 find = False
                 if mygpu < maxGPU and len(deviceIDs) >= needGPU:
                     os.system(lines[0].strip())
