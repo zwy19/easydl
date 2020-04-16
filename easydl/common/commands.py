@@ -78,6 +78,9 @@ def runTask():
 
     import random
     import os
+    CUDA_VISIBLE_DEVICES = os.environ.get('CUDA_VISIBLE_DEVICES')
+    CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES or ''
+    visible_devices = {int(each) for each in CUDA_VISIBLE_DEVICES.split(',')}
 
     while True:
         with open(file) as f:
@@ -90,7 +93,9 @@ def runTask():
                 mygpu = len(ans.splitlines())
                 deviceIDs = []
                 try:
-                    deviceIDs = select_GPUs(N_per_process=needGPU, max_utilization=maxLoad,max_memory_usage=maxMemory)
+                    deviceIDs = select_GPUs(N_per_process=-1, max_utilization=maxLoad,max_memory_usage=maxMemory)
+                    deviceIDs  = sorted(list(visible_devices & set(deviceIDs)))
+                    deviceIDs = deviceIDs[:needGPU]
                 except Exception as e:
                     deviceIDs = []
                 find = False
@@ -98,6 +103,8 @@ def runTask():
                     command = lines[0].strip()
                     if not command.endswith('&'):
                         command += ' &'
+                    env = 'export CUDA_VISIBLE_DEVICES=' + ','.join([str(i) for i in deviceIDs]) + ';'
+                    command = env + command
                     os.system(command)
                     print('runing command(%s)' % command)
                     find = True

@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(name='easydl',
-      version='2.1.0',
-      description='"add support for filelist with spaces in the path"',
+      version='2.2.0',
+      description='"more powerful runTask"',
       url='https://github.com/thuml/easydl',
       license='MIT',
       packages=['easydl','easydl.tf', 'easydl.common', 'easydl.pytorch'],

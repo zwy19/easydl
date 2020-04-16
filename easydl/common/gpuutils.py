@@ -8,7 +8,7 @@ def get_available_GPUs(N, max_utilization=.5, max_memory_usage=.5):
     '''
     get `N` available GPU ids with *utilization* less than `max_utilization` and *memory usage* less than max_memory_usage
     Arguments:
-        N (int): How many GPUs you want to select
+        N (int): How many GPUs you want to select, -1 for all GPUs
         max_utilization (float): GPU with utilization higher than `max_utilization` is considered as not available.
         max_memory_usage (float): GPU with memory usage higher than `max_memory_usage` is considered as not available.
 
@@ -27,8 +27,10 @@ def get_available_GPUs(N, max_utilization=.5, max_memory_usage=.5):
         if utilization / 100.0 < max_utilization:
             if used * 1.0 / total < max_memory_usage:
                 gpu_ids.append(index)
-    if len(gpu_ids) < N:
+    if N > 0 and len(gpu_ids) < N:
         raise Exception("Only %s GPU(s) available but %s GPU(s) are required!" % (len(gpu_ids), N))
+    if N <= 0:
+        return gpu_ids
     available = gpu_ids[:N]
     return list(available)
 
