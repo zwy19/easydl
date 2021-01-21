@@ -79,7 +79,7 @@ def runTask():
     import random
     import os
     CUDA_VISIBLE_DEVICES = os.environ.get('CUDA_VISIBLE_DEVICES')
-    CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES or ''
+    CUDA_VISIBLE_DEVICES = CUDA_VISIBLE_DEVICES or '0,1,2,3,4,5,6,7,8'
     visible_devices = {int(each) for each in CUDA_VISIBLE_DEVICES.split(',')}
 
     while True:
