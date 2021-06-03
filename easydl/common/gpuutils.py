@@ -21,7 +21,7 @@ def get_available_GPUs(N, max_utilization=.5, max_memory_usage=.5):
            "--format=csv,noheader,nounits"]
     p = Popen(cmd, stdout=PIPE)
     output = p.stdout.read().decode('UTF-8')
-    gpus = [[int(x) for x in line.split(',')] for line in output.splitlines()]
+    gpus = [[int(float(x)) for x in line.split(',')] for line in output.splitlines()]
     gpu_ids = []
     for (index, utilization, total, used) in gpus:
         if utilization / 100.0 < max_utilization:
